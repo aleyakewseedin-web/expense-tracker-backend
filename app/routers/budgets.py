@@ -1,34 +1,39 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,Request
 from sqlalchemy.orm import Session
 from sqlalchemy import extract, func
 from app.database import get_db
 from app.models.budget import Budget
 from app.models.expense import Expense
 from app.models.category import Category
+from app.models.user import User
 from app.schemas.budget import BudgetCreate, BudgetResponse, BudgetWithSpending
+from app.dependencies import get_current_user
 from typing import List
 from uuid import UUID
 from decimal import Decimal
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/budgets", tags=["Budgets"])
 
 
 @router.post("", response_model=BudgetResponse, status_code=201)
+@limiter.limit("30/minute")
 def create_budget(
-    user_id: UUID,
+    request: Request,
     budget_data: BudgetCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    # Check category exists
     category = db.query(Category).filter(
         Category.id == budget_data.category_id
     ).first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
-    # Check if budget already exists for this category+month+year
     existing = db.query(Budget).filter(
-        Budget.user_id == user_id,
+        Budget.user_id == current_user.id,
         Budget.category_id == budget_data.category_id,
         Budget.month == budget_data.month,
         Budget.year == budget_data.year
@@ -40,7 +45,7 @@ def create_budget(
         )
 
     budget = Budget(
-        user_id=user_id,
+        user_id=current_user.id,
         category_id=budget_data.category_id,
         month=budget_data.month,
         year=budget_data.year,
@@ -54,11 +59,10 @@ def create_budget(
 
 @router.get("", response_model=List[BudgetWithSpending])
 def get_budgets(
-    user_id: UUID,
     month: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    # Validate month format
     parts = month.split("-")
     if len(parts) != 2:
         raise HTTPException(
@@ -77,23 +81,16 @@ def get_budgets(
             detail="Invalid month format. Use YYYY-MM (e.g. 2026-05)"
         )
 
-
-    # Parse month string e.g. "2026-05"
-    year, mon = month.split("-")
-    year, mon = int(year), int(mon)
-
-    # Get all budgets for this user and month
     budgets = db.query(Budget).filter(
-        Budget.user_id == user_id,
+        Budget.user_id == current_user.id,
         Budget.month == mon,
         Budget.year == year
     ).all()
 
     result = []
     for budget in budgets:
-        # Sum all expenses for this category this month
         spent = db.query(func.sum(Expense.amount_usd)).filter(
-            Expense.user_id == user_id,
+            Expense.user_id == current_user.id,
             Expense.category_id == budget.category_id,
             extract("month", Expense.expense_date) == mon,
             extract("year", Expense.expense_date) == year
@@ -103,7 +100,6 @@ def get_budgets(
         remaining = budget.budget_amount_usd - spent
         over_budget = spent > budget.budget_amount_usd
 
-        # Get category name
         category = db.query(Category).filter(
             Category.id == budget.category_id
         ).first()
@@ -121,15 +117,17 @@ def get_budgets(
 
 
 @router.put("/{budget_id}", response_model=BudgetResponse)
+@limiter.limit("30/minute")
 def update_budget(
+    request: Request,
     budget_id: UUID,
-    user_id: UUID,
     budget_amount_usd: Decimal,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     budget = db.query(Budget).filter(
         Budget.id == budget_id,
-        Budget.user_id == user_id
+        Budget.user_id == current_user.id
     ).first()
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")
@@ -141,14 +139,16 @@ def update_budget(
 
 
 @router.delete("/{budget_id}")
+@limiter.limit("30/minute")
 def delete_budget(
+    request: Request,
     budget_id: UUID,
-    user_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     budget = db.query(Budget).filter(
         Budget.id == budget_id,
-        Budget.user_id == user_id
+        Budget.user_id == current_user.id
     ).first()
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")

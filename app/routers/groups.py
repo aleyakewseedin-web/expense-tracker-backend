@@ -10,7 +10,8 @@ from app.schemas.group import (
     MemberResponse, GroupExpenseCreate, GroupExpenseResponse
 )
 from app.services.currency import get_exchange_rate
-from typing import List,Optional
+from app.dependencies import get_current_user
+from typing import List, Optional
 from uuid import UUID
 from datetime import date
 from decimal import Decimal
@@ -18,7 +19,6 @@ from decimal import Decimal
 router = APIRouter(prefix="/groups", tags=["Groups"])
 
 
-# ── Helper: check if user is a member of a group
 def require_group_member(group_id: UUID, user_id: UUID, db: Session):
     member = db.query(GroupMember).filter(
         GroupMember.group_id == group_id,
@@ -32,7 +32,6 @@ def require_group_member(group_id: UUID, user_id: UUID, db: Session):
     return member
 
 
-# ── Helper: check if user is the group creator
 def require_group_creator(group_id: UUID, user_id: UUID, db: Session):
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
@@ -45,20 +44,27 @@ def require_group_creator(group_id: UUID, user_id: UUID, db: Session):
     return group
 
 
+@router.get("/users/search")
+def search_user(
+    email: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="No user found with that email")
+    return {"id": user.id, "name": user.name, "email": user.email}
+
+
 @router.post("", response_model=GroupResponse, status_code=201)
 def create_group(
-    user_id: UUID,
     group_data: GroupCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # Check if this user already has a group with this name
     existing = db.query(Group).filter(
         Group.name == group_data.name,
-        Group.created_by == user_id
+        Group.created_by == current_user.id
     ).first()
     if existing:
         raise HTTPException(
@@ -66,10 +72,10 @@ def create_group(
             detail="You already have a group with this name"
         )
 
-    group = Group(name=group_data.name, created_by=user_id)
+    group = Group(name=group_data.name, created_by=current_user.id, admin_id=current_user.id)
     db.add(group)
     db.flush()
-    member = GroupMember(group_id=group.id, user_id=user_id)
+    member = GroupMember(group_id=group.id, user_id=current_user.id)
     db.add(member)
     db.commit()
     db.refresh(group)
@@ -77,18 +83,24 @@ def create_group(
 
 
 @router.get("", response_model=List[GroupResponse])
-def get_groups(user_id: UUID, db: Session = Depends(get_db)):
-    # Get all groups this user belongs to
+def get_groups(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     memberships = db.query(GroupMember).filter(
-        GroupMember.user_id == user_id
+        GroupMember.user_id == current_user.id
     ).all()
     group_ids = [m.group_id for m in memberships]
     return db.query(Group).filter(Group.id.in_(group_ids)).all()
 
 
 @router.get("/{group_id}", response_model=GroupResponse)
-def get_group(group_id: UUID, user_id: UUID, db: Session = Depends(get_db)):
-    require_group_member(group_id, user_id, db)
+def get_group(
+    group_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    require_group_member(group_id, current_user.id, db)
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
@@ -96,8 +108,12 @@ def get_group(group_id: UUID, user_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/{group_id}/members", response_model=List[MemberResponse])
-def get_members(group_id: UUID, user_id: UUID, db: Session = Depends(get_db)):
-    require_group_member(group_id, user_id, db)
+def get_members(
+    group_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    require_group_member(group_id, current_user.id, db)
     memberships = db.query(GroupMember).filter(
         GroupMember.group_id == group_id
     ).all()
@@ -108,19 +124,16 @@ def get_members(group_id: UUID, user_id: UUID, db: Session = Depends(get_db)):
 @router.post("/{group_id}/members", status_code=201)
 def add_member(
     group_id: UUID,
-    user_id: UUID,
     member_data: MemberAdd,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    # Only creator can add members
-    require_group_creator(group_id, user_id, db)
+    require_group_creator(group_id, current_user.id, db)
 
-    # Check user to add exists
     new_user = db.query(User).filter(User.id == member_data.user_id).first()
     if not new_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Check not already a member
     existing = db.query(GroupMember).filter(
         GroupMember.group_id == group_id,
         GroupMember.user_id == member_data.user_id
@@ -138,14 +151,13 @@ def add_member(
 def remove_member(
     group_id: UUID,
     member_user_id: UUID,
-    user_id: UUID,
     new_admin_id: Optional[UUID] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    group = require_group_creator(group_id, user_id, db)
+    group = require_group_creator(group_id, current_user.id, db)
 
-    # Cannot remove yourself via this endpoint — use /leave instead
-    if member_user_id == user_id:
+    if member_user_id == current_user.id:
         raise HTTPException(
             status_code=400,
             detail="You cannot remove yourself. Use DELETE /groups/{id}/leave instead"
@@ -158,14 +170,12 @@ def remove_member(
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
 
-    # If removing the current admin, new_admin_id is required
     if member_user_id == group.admin_id:
         if not new_admin_id:
             raise HTTPException(
                 status_code=400,
                 detail="This member is the admin. Provide new_admin_id to reassign admin before removing"
             )
-        # Verify new admin is a member
         new_admin_member = db.query(GroupMember).filter(
             GroupMember.group_id == group_id,
             GroupMember.user_id == new_admin_id
@@ -185,21 +195,18 @@ def remove_member(
 @router.post("/{group_id}/expenses", response_model=GroupExpenseResponse, status_code=201)
 async def create_group_expense(
     group_id: UUID,
-    user_id: UUID,
     expense_data: GroupExpenseCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    # Must be a group member to add expenses
-    require_group_member(group_id, user_id, db)
+    require_group_member(group_id, current_user.id, db)
 
-    # Validate category
     category = db.query(Category).filter(
         Category.id == expense_data.category_id
     ).first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
-    # Parse and validate date
     try:
         expense_date = date.fromisoformat(expense_data.expense_date)
         if expense_date > date.today():
@@ -208,12 +215,8 @@ async def create_group_expense(
                 detail="Expense date cannot be in the future"
             )
     except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid date format. Use YYYY-MM-DD"
-        )
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
 
-    # Get exchange rate
     rate = await get_exchange_rate(
         base_currency=expense_data.currency_code,
         target_currency="USD",
@@ -222,9 +225,8 @@ async def create_group_expense(
     )
     amount_usd = round(float(expense_data.original_amount) * rate, 2)
 
-    # Create the expense
     expense = Expense(
-        user_id=user_id,
+        user_id=current_user.id,
         group_id=group_id,
         category_id=expense_data.category_id,
         original_amount=expense_data.original_amount,
@@ -238,7 +240,6 @@ async def create_group_expense(
     db.add(expense)
     db.flush()
 
-    # Calculate and store splits
     members = expense_data.splits
     num_members = len(members)
 
@@ -293,11 +294,11 @@ async def create_group_expense(
 @router.get("/{group_id}/expenses", response_model=List[GroupExpenseResponse])
 def get_group_expenses(
     group_id: UUID,
-    user_id: UUID,
-    month: str = None,
-    db: Session = Depends(get_db)
+    month: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    require_group_member(group_id, user_id, db)
+    require_group_member(group_id, current_user.id, db)
 
     query = db.query(Expense).filter(Expense.group_id == group_id)
 
@@ -325,46 +326,39 @@ def get_group_expenses(
 
     return query.order_by(Expense.expense_date.desc()).all()
 
+
 @router.delete("/{group_id}/leave")
 def leave_group(
     group_id: UUID,
-    user_id: UUID,
     new_admin_id: Optional[UUID] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    # Check user is a member
-    require_group_member(group_id, user_id, db)
+    require_group_member(group_id, current_user.id, db)
 
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
 
-    # Get remaining members excluding this user
     remaining = db.query(GroupMember).filter(
         GroupMember.group_id == group_id,
-        GroupMember.user_id != user_id
+        GroupMember.user_id != current_user.id
     ).all()
 
-    # Check if user is the admin
-    is_admin = str(group.admin_id) == str(user_id)
+    is_admin = str(group.admin_id) == str(current_user.id)
 
     if is_admin:
-        # If there are other members, new_admin_id is mandatory
         if remaining:
             if not new_admin_id:
                 raise HTTPException(
                     status_code=400,
                     detail=f"You are the admin and there are {len(remaining)} other members. You must assign a new admin before leaving. Provide new_admin_id."
                 )
-
-            # Cannot assign yourself as new admin
-            if str(new_admin_id) == str(user_id):
+            if str(new_admin_id) == str(current_user.id):
                 raise HTTPException(
                     status_code=400,
                     detail="You cannot assign yourself as the new admin while leaving"
                 )
-
-            # Verify new admin is actually a remaining member
             new_admin_is_member = any(
                 str(m.user_id) == str(new_admin_id) for m in remaining
             )
@@ -373,11 +367,8 @@ def leave_group(
                     status_code=400,
                     detail="new_admin_id must be an existing group member"
                 )
-
             group.admin_id = new_admin_id
-
         else:
-            # Admin is last member — delete the group entirely
             db.query(ExpenseSplit).filter(
                 ExpenseSplit.expense_id.in_(
                     db.query(Expense.id).filter(Expense.group_id == group_id)
@@ -389,10 +380,9 @@ def leave_group(
             db.commit()
             return {"message": "Group deleted as you were the last member"}
 
-    # Remove the leaving user
     member = db.query(GroupMember).filter(
         GroupMember.group_id == group_id,
-        GroupMember.user_id == user_id
+        GroupMember.user_id == current_user.id
     ).first()
     db.delete(member)
     db.commit()

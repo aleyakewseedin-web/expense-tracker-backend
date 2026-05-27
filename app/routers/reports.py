@@ -12,7 +12,8 @@ from decimal import Decimal
 from datetime import datetime
 from app.services.cache import get_cached_report, set_cached_report, invalidate_report_cache
 from app.services.ai_report import generate_financial_narrative
-
+from app.models.user import User
+from app.dependencies import get_current_user
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
 
@@ -106,11 +107,11 @@ def build_monthly_summary(user_id: UUID, year: int, month: int, db: Session) -> 
 
 @router.get("/monthly", response_model=MonthlyReportResponse)
 def get_monthly_report(
-    user_id: UUID,
-    month: str,
-    db: Session = Depends(get_db)
+     month: str,
+     db: Session = Depends(get_db),
+     current_user: User = Depends(get_current_user)
 ):
-    print(f"=== REPORT CALLED for user {user_id} month {month} ===")
+    print(f"=== REPORT CALLED for user {current_user.id} month {month} ===")
 
     # Validate month format
     parts = month.split("-")
@@ -130,7 +131,7 @@ def get_monthly_report(
         )
 
     # Check Redis cache first
-    cached = get_cached_report(str(user_id), month)
+    cached = get_cached_report(str(current_user.id), month)
     if cached:
         return MonthlyReportResponse(
             month=month,
@@ -141,7 +142,7 @@ def get_monthly_report(
         )
 
     # No cache — compute the summary
-    summary = build_monthly_summary(user_id, year, mon, db)
+    summary = build_monthly_summary(current_user.id, year, mon, db)
 
     # Handle empty month
     if summary["total_expenses_count"] == 0:
@@ -155,7 +156,7 @@ def get_monthly_report(
 
     # Check if AI narrative already exists in DB
     existing_report = db.query(MonthlyReport).filter(
-        MonthlyReport.user_id == user_id,
+        MonthlyReport.user_id == current_user.id,
         MonthlyReport.month == mon,
         MonthlyReport.year == year
     ).first()
@@ -176,7 +177,7 @@ def get_monthly_report(
         generated_at = datetime.utcnow().isoformat()
 
         new_report = MonthlyReport(
-            user_id=user_id,
+            user_id=current_user.id,
             month=mon,
             year=year,
             summary_json=summary,
@@ -191,7 +192,7 @@ def get_monthly_report(
         "ai_narrative": ai_narrative,
         "generated_at": generated_at
     }
-    set_cached_report(str(user_id), month, response_data)
+    set_cached_report(str(current_user.id), month, response_data)
 
     return MonthlyReportResponse(
         month=month,
@@ -203,9 +204,9 @@ def get_monthly_report(
 
 @router.delete("/monthly/regenerate")
 def regenerate_report(
-    user_id: UUID,
     month: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     parts = month.split("-")
     if len(parts) != 2:
@@ -213,12 +214,12 @@ def regenerate_report(
     year, mon = int(parts[0]), int(parts[1])
 
     db.query(MonthlyReport).filter(
-        MonthlyReport.user_id == user_id,
+        MonthlyReport.user_id == current_user.id,
         MonthlyReport.month == mon,
         MonthlyReport.year == year
     ).delete()
     db.commit()
 
-    invalidate_report_cache(str(user_id), month)
+    invalidate_report_cache(str(current_user.id), month)
 
     return {"message": "Report cleared — call GET /reports/monthly to regenerate"}

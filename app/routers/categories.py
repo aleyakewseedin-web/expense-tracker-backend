@@ -2,31 +2,34 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.category import Category
+from app.models.user import User
 from app.schemas.category import CategoryCreate, CategoryResponse
+from app.dependencies import get_current_user
 from typing import List
 from uuid import UUID
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 
 @router.get("", response_model=List[CategoryResponse])
-def get_categories(user_id: UUID, db: Session = Depends(get_db)):
-    # Return system categories + this user's custom categories
+def get_categories(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     categories = db.query(Category).filter(
         (Category.is_system == True) |
-        (Category.user_id == user_id)
+        (Category.user_id == current_user.id)
     ).all()
     return categories
 
 
 @router.post("", response_model=CategoryResponse, status_code=201)
 def create_category(
-    user_id: UUID,
     category_data: CategoryCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    # Check if user already has a category with this name
     existing = db.query(Category).filter(
-        Category.user_id == user_id,
+        Category.user_id == current_user.id,
         Category.name == category_data.name
     ).first()
     if existing:
@@ -38,7 +41,7 @@ def create_category(
     category = Category(
         name=category_data.name,
         is_system=False,
-        user_id=user_id
+        user_id=current_user.id
     )
     db.add(category)
     db.commit()
@@ -49,12 +52,12 @@ def create_category(
 @router.delete("/{category_id}", status_code=200)
 def delete_category(
     category_id: UUID,
-    user_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     category = db.query(Category).filter(
         Category.id == category_id,
-        Category.user_id == user_id,
+        Category.user_id == current_user.id,
         Category.is_system == False
     ).first()
 

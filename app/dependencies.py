@@ -28,7 +28,7 @@ def get_current_user(
         )
 
     user = db.query(User).filter(User.id == user_id).first()
-    if user is None:
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from uuid import UUID
+from typing import Optional
 
 class UserRegister(BaseModel):
     name: str
@@ -16,6 +17,7 @@ class UserResponse(BaseModel):
     name: str
     email: str
     base_currency: str
+    is_2fa_enabled: bool = False
 
     class Config:
         from_attributes = True
@@ -23,3 +25,8 @@ class UserResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+    totp_code: Optional[str] = None
