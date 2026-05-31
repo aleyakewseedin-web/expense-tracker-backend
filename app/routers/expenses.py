@@ -191,6 +191,13 @@ def delete_expense(
         raise HTTPException(status_code=404, detail="Expense not found")
 
     month_str = expense.expense_date.strftime("%Y-%m")
+
+    # Delete splits first before deleting expense
+    from app.models.expense import ExpenseSplit
+    db.query(ExpenseSplit).filter(
+        ExpenseSplit.expense_id == expense_id
+    ).delete()
+
     db.delete(expense)
     db.commit()
     invalidate_report_cache(str(current_user.id), month_str)

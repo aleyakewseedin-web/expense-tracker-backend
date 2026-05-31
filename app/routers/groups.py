@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,Request
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.group import Group, GroupMember
@@ -15,6 +15,9 @@ from typing import List, Optional
 from uuid import UUID
 from datetime import date
 from decimal import Decimal
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/groups", tags=["Groups"])
 
@@ -57,7 +60,9 @@ def search_user(
 
 
 @router.post("", response_model=GroupResponse, status_code=201)
+@limiter.limit("20/minute")
 def create_group(
+    request: Request,
     group_data: GroupCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -122,7 +127,9 @@ def get_members(
 
 
 @router.post("/{group_id}/members", status_code=201)
+@limiter.limit("30/minute")
 def add_member(
+    request: Request,
     group_id: UUID,
     member_data: MemberAdd,
     db: Session = Depends(get_db),
@@ -193,7 +200,9 @@ def remove_member(
 
 
 @router.post("/{group_id}/expenses", response_model=GroupExpenseResponse, status_code=201)
+@limiter.limit("30/minute")
 async def create_group_expense(
+    request: Request,
     group_id: UUID,
     expense_data: GroupExpenseCreate,
     db: Session = Depends(get_db),

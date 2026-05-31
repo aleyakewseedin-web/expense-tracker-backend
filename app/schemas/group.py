@@ -2,6 +2,7 @@ from pydantic import BaseModel, field_validator
 from uuid import UUID
 from decimal import Decimal
 from typing import Optional, List
+from datetime import date
 
 class GroupCreate(BaseModel):
     name: str
@@ -77,6 +78,7 @@ class GroupExpenseResponse(BaseModel):
     original_amount: Decimal
     currency_code: str
     amount_usd: Decimal
+    expense_date: date
     description: Optional[str] = None
 
     class Config:

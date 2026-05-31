@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status,Request
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.category import Category
@@ -7,6 +7,10 @@ from app.schemas.category import CategoryCreate, CategoryResponse
 from app.dependencies import get_current_user
 from typing import List
 from uuid import UUID
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 
@@ -23,11 +27,14 @@ def get_categories(
 
 
 @router.post("", response_model=CategoryResponse, status_code=201)
+@limiter.limit("20/minute")
 def create_category(
+    request: Request,
     category_data: CategoryCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+
     existing = db.query(Category).filter(
         Category.user_id == current_user.id,
         Category.name == category_data.name
@@ -50,7 +57,9 @@ def create_category(
 
 
 @router.delete("/{category_id}", status_code=200)
+@limiter.limit("20/minute")
 def delete_category(
+    request: Request,
     category_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
