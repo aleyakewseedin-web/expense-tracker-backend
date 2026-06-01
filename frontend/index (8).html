@@ -740,14 +740,21 @@
                 placeholder="you@example.com"
               />
             </div>
-            <div class="form-group">
-              <label>Password</label>
-              <input
-                type="password"
-                id="loginPassword"
-                placeholder="••••••••"
-              />
-            </div>
+<div class="form-group">
+  <label>Password</label>
+  <div style="position:relative">
+    <input
+      type="password"
+      id="loginPassword"
+      placeholder="••••••••"
+      style="padding-right:2.5rem"
+    />
+    <button type="button" onclick="togglePasswordVisibility('loginPassword', this)"
+      style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text2);font-size:1rem">
+      👁
+    </button>
+  </div>
+</div>
             <div class="form-group" id="totpField" style="display: none">
               <label>2FA Code</label>
               <input
@@ -770,14 +777,29 @@
               <label>Email</label>
               <input type="email" id="regEmail" placeholder="you@example.com" />
             </div>
-            <div class="form-group">
-              <label>Password</label>
-              <input
-                type="password"
-                id="regPassword"
-                placeholder="min 8 characters"
-              />
-            </div>
+   <div class="form-group">
+  <label>Password</label>
+  <div style="position:relative">
+    <input
+      type="password"
+      id="regPassword"
+      placeholder="Create a password"
+      oninput="checkPasswordStrength()"
+      style="padding-right:2.5rem"
+    />
+    <button type="button" onclick="togglePasswordVisibility('regPassword', this)"
+      style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text2);font-size:1rem">
+      👁
+    </button>
+  </div>
+  <div id="passwordRequirements" style="margin-top:0.5rem;display:none">
+    <div id="req-length" style="font-size:0.78rem;padding:0.2rem 0;color:var(--danger)">✗ At least 8 characters</div>
+    <div id="req-upper" style="font-size:0.78rem;padding:0.2rem 0;color:var(--danger)">✗ At least one uppercase letter</div>
+    <div id="req-lower" style="font-size:0.78rem;padding:0.2rem 0;color:var(--danger)">✗ At least one lowercase letter</div>
+    <div id="req-number" style="font-size:0.78rem;padding:0.2rem 0;color:var(--danger)">✗ At least one number</div>
+    <div id="req-symbol" style="font-size:0.78rem;padding:0.2rem 0;color:var(--danger)">✗ At least one symbol (!@#$...)</div>
+  </div>
+</div>
             <div class="form-group">
               <label>Base Currency</label>
               <select id="regCurrency">
@@ -1126,7 +1148,7 @@
                 <div style="margin-bottom:1.5rem">
                   <div style="font-weight:600;margin-bottom:0.75rem;font-size:0.9rem">Members</div>
                   <div id="groupMembers"></div>
-                  <div style="display:flex;gap:0.5rem;margin-top:0.75rem">
+                  <div style="display:flex;gap:0.5rem;margin-top:0.75rem" id="addMemberSection">
                     <input type="email" id="addMemberEmail" placeholder="Search by email..." style="flex:1">
                     <button class="btn btn-secondary btn-sm" onclick="searchAndAddMember()" style="width:auto">Add Member</button>
                   </div>
@@ -1351,7 +1373,16 @@ function showLogin() {
         if (!name || !email || !password)
           return toast("Please fill in all fields", "error");
 
-        const pwError = validatePassword(password);
+          const allPassed = document.getElementById('passwordRequirements') &&
+  ['req-length','req-upper','req-lower','req-number','req-symbol']
+    .every(id => document.getElementById(id)?.style.color === 'var(--success)');
+
+if (!allPassed) {
+  document.getElementById('passwordRequirements').style.display = 'block';
+  checkPasswordStrength();
+  return toast('Please meet all password requirements', 'error');
+}
+
         if (pwError) return toast(pwError, "error");
 
         try {
@@ -1377,7 +1408,15 @@ function showLogin() {
         localStorage.clear();
         document.getElementById("mainApp").style.display = "none";
         document.getElementById("authScreen").style.display = "flex";
-      }
+        document.getElementById("landingPage").style.display = "block";
+  
+  // Clear login fields
+        document.getElementById("loginEmail").value = "";
+        document.getElementById("loginPassword").value = "";
+        document.getElementById("loginTotp").value = "";
+        document.getElementById("totpField").style.display = "none";
+        }
+    
 
       function showApp() {
         document.getElementById("authScreen").style.display = "none";
@@ -1910,28 +1949,98 @@ function showLogin() {
       }
 
       async function loadGroupMembers() {
-        try {
-          const res = await fetch(`${API}/groups/${currentGroupId}/members`, {
-            headers: authHeaders(),
-          });
-          groupMembers = await res.json();
-          document.getElementById("groupMembers").innerHTML = groupMembers
-            .map(
-              (m) => `
+  try {
+    const res = await fetch(`${API}/groups/${currentGroupId}/members`, {
+      headers: authHeaders()
+    });
+    groupMembers = await res.json();
+
+    // Get group info to know who the admin is
+    const groupRes = await fetch(`${API}/groups/${currentGroupId}`, {
+      headers: authHeaders()
+    });
+    const groupInfo = await groupRes.json();
+    const adminId = groupInfo.admin_id;
+    const isAdmin = String(adminId) === String(userId);
+
+    document.getElementById('groupMembers').innerHTML = groupMembers.map(m => `
       <div class="expense-item" style="padding:0.6rem 1rem">
         <div class="expense-left">
           <div class="expense-icon">👤</div>
           <div>
-            <div class="expense-desc">${m.name}</div>
+            <div class="expense-desc">
+              ${m.name} ${String(m.id) === String(adminId) ? '<span class="tag">admin</span>' : ''}
+            </div>
             <div class="expense-meta">${m.email}</div>
           </div>
         </div>
-      </div>`,
-            )
-            .join("");
-          renderSplitInputs();
-        } catch (e) {}
+        ${isAdmin && String(m.id) !== String(userId) ? `
+          <button class="btn btn-danger btn-sm" onclick="removeMember('${m.id}', '${m.name}')">Remove</button>
+        ` : `
+          ${String(m.id) === String(userId) ? `
+            <button class="btn btn-secondary btn-sm" onclick="leaveGroup()">Leave</button>
+          ` : ''}
+        `}
+      </div>`).join('');
+
+    // Show add member only if admin
+    document.getElementById('addMemberSection').style.display = isAdmin ? 'flex' : 'none';
+
+    renderSplitInputs();
+  } catch(e) {}
+}
+
+
+async function removeMember(memberId, memberName) {
+  if (!confirm(`Remove ${memberName} from the group?`)) return;
+  try {
+    const res = await fetch(`${API}/groups/${currentGroupId}/members/${memberId}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) return toast(data.detail || 'Failed to remove member', 'error');
+    toast(`${memberName} removed`, 'success');
+    loadGroupMembers();
+  } catch(e) { toast('Connection error', 'error'); }
+}
+
+async function leaveGroup() {
+  if (!confirm('Are you sure you want to leave this group?')) return;
+  try {
+    const res = await fetch(`${API}/groups/${currentGroupId}/leave`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      // If admin needs to assign new admin
+      if (data.detail?.includes('admin')) {
+        const newAdminEmail = prompt('You are the admin. Enter the email of the member to assign as new admin:');
+        if (!newAdminEmail) return;
+        // Find member by email
+        const member = groupMembers.find(m => m.email === newAdminEmail);
+        if (!member) return toast('Member not found', 'error');
+        const res2 = await fetch(`${API}/groups/${currentGroupId}/leave?new_admin_id=${member.id}`, {
+          method: 'DELETE',
+          headers: authHeaders()
+        });
+        const data2 = await res2.json();
+        if (!res2.ok) return toast(data2.detail || 'Failed to leave', 'error');
+        toast(data2.message, 'success');
+        closeGroupDetail();
+        loadGroups();
+      } else {
+        return toast(data.detail || 'Failed to leave group', 'error');
       }
+    } else {
+      toast(data.message || 'You left the group', 'success');
+      closeGroupDetail();
+      loadGroups();
+    }
+  } catch(e) { toast('Connection error', 'error'); }
+}
+
 
       async function searchAndAddMember() {
         const email = document.getElementById("addMemberEmail").value.trim();
@@ -2206,6 +2315,44 @@ function showLogin() {
         const btn = document.getElementById("themeBtn");
         if (btn) btn.textContent = saved === "light" ? "☀️" : "🌙";
       }
+
+
+      function checkPasswordStrength() {
+  const password = document.getElementById('regPassword').value;
+  const requirements = document.getElementById('passwordRequirements');
+  requirements.style.display = password.length > 0 ? 'block' : 'none';
+
+  const checks = {
+    'req-length': password.length >= 8,
+    'req-upper': /[A-Z]/.test(password),
+    'req-lower': /[a-z]/.test(password),
+    'req-number': /[0-9]/.test(password),
+    'req-symbol': /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+  };
+
+  for (const [id, passed] of Object.entries(checks)) {
+    const el = document.getElementById(id);
+    if (passed) {
+      el.style.color = 'var(--success)';
+      el.textContent = '✓ ' + el.textContent.slice(2);
+    } else {
+      el.style.color = 'var(--danger)';
+      el.textContent = '✗ ' + el.textContent.slice(2);
+    }
+  }
+}
+
+
+function togglePasswordVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁';
+  }
+}
 
       // ── TOAST ──
       function toast(msg, type = "success") {

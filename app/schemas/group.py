@@ -21,6 +21,8 @@ class GroupResponse(BaseModel):
     id: UUID
     name: str
     created_by: UUID
+    admin_id: Optional[UUID] = None
+
 
     class Config:
         from_attributes = True
