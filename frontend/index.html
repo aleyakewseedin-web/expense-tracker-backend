@@ -1,0 +1,2777 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Expense Tracker</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0a0a0f;
+        --surface: #13131a;
+        --surface2: #1c1c26;
+        --border: #2a2a3a;
+        --accent: #7c6dfa;
+        --accent2: #fa6d8a;
+        --accent3: #6dfabc;
+        --text: #e8e8f0;
+        --text2: #8888aa;
+        --text3: #555577;
+        --danger: #fa6d6d;
+        --success: #6dfabc;
+        --warning: #fabc6d;
+      }
+
+      [data-theme="light"] {
+        --bg: #f4f4f8;
+        --surface: #ffffff;
+        --surface2: #f0f0f5;
+        --border: #d8d8e8;
+        --accent: #6c5ce7;
+        --accent2: #e84393;
+        --accent3: #00b894;
+        --text: #1a1a2e;
+        --text2: #555577;
+        --text3: #888899;
+        --danger: #e84040;
+        --success: #00b894;
+        --warning: #f39c12;
+      }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'DM Sans', sans-serif;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* Background mesh */
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(ellipse 80% 50% at 20% 20%, rgba(124,109,250,0.08) 0%, transparent 60%),
+          radial-gradient(ellipse 60% 40% at 80% 80%, rgba(250,109,138,0.06) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .app { position: relative; z-index: 1; }
+
+      /* ── NAV ── */
+      nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.25rem 2rem;
+        border-bottom: 1px solid var(--border);
+        background: rgba(10,10,15,0.8);
+        backdrop-filter: blur(12px);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+
+      .nav-brand {
+        font-family: 'Syne', sans-serif;
+        font-weight: 800;
+        font-size: 1.3rem;
+        letter-spacing: -0.02em;
+      }
+
+      .nav-brand span { color: var(--accent); }
+
+      .nav-tabs {
+        display: flex;
+        gap: 0.25rem;
+        background: var(--surface);
+        padding: 0.25rem;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+      }
+
+      .nav-tab {
+        padding: 0.5rem 1.25rem;
+        border-radius: 8px;
+        border: none;
+        background: transparent;
+        color: var(--text2);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .nav-tab.active {
+        background: var(--accent);
+        color: white;
+      }
+
+      .nav-tab:hover:not(.active) {
+        background: var(--surface2);
+        color: var(--text);
+      }
+
+      .nav-user {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .user-badge {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.75rem;
+        color: var(--text2);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 0.35rem 0.75rem;
+        border-radius: 8px;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .btn-logout {
+        padding: 0.4rem 0.9rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text2);
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+      /* ── AUTH ── */
+      .auth-screen {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+      }
+
+      .auth-card {
+        width: 100%;
+        max-width: 420px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 2.5rem;
+      }
+
+      .auth-title {
+        font-family: 'Syne', sans-serif;
+        font-weight: 800;
+        font-size: 2rem;
+        letter-spacing: -0.03em;
+        margin-bottom: 0.5rem;
+      }
+
+      .auth-title span { color: var(--accent); }
+
+      .auth-sub {
+        color: var(--text2);
+        font-size: 0.9rem;
+        margin-bottom: 2rem;
+      }
+
+      .auth-toggle {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.75rem;
+        background: var(--surface2);
+        padding: 0.25rem;
+        border-radius: 10px;
+      }
+
+      .auth-toggle-btn {
+        flex: 1;
+        padding: 0.6rem;
+        border-radius: 7px;
+        border: none;
+        background: transparent;
+        color: var(--text2);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .auth-toggle-btn.active {
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      }
+
+      /* ── FORMS ── */
+      .form-group { margin-bottom: 1rem; }
+
+      label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--text2);
+        margin-bottom: 0.4rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      input, select, textarea {
+        width: 100%;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.7rem 1rem;
+        color: var(--text);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.9rem;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      input:focus, select:focus, textarea:focus {
+        border-color: var(--accent);
+      }
+
+      select option { background: var(--surface2); }
+
+      .btn {
+        width: 100%;
+        padding: 0.85rem;
+        border-radius: 10px;
+        border: none;
+        font-family: 'Syne', sans-serif;
+        font-weight: 700;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        letter-spacing: 0.02em;
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: white;
+      }
+
+      .btn-primary:hover { background: #6a5de8; transform: translateY(-1px); }
+
+      .btn-secondary {
+        background: var(--surface2);
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+
+      .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+      .btn-danger {
+        background: transparent;
+        color: var(--danger);
+        border: 1px solid var(--danger);
+      }
+
+      .btn-danger:hover { background: rgba(250,109,109,0.1); }
+
+      .btn-sm {
+        width: auto;
+        padding: 0.4rem 0.9rem;
+        font-size: 0.8rem;
+        border-radius: 8px;
+      }
+
+      /* ── MAIN LAYOUT ── */
+      .main {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+
+      .page { display: none; }
+      .page.active { display: block; }
+
+      /* ── DASHBOARD ── */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0; right: 0;
+        width: 80px; height: 80px;
+        border-radius: 0 16px 0 80px;
+        opacity: 0.15;
+      }
+
+      .stat-card.purple::before { background: var(--accent); }
+      .stat-card.pink::before { background: var(--accent2); }
+      .stat-card.green::before { background: var(--accent3); }
+      .stat-card.orange::before { background: var(--warning); }
+
+      .stat-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text2);
+        margin-bottom: 0.5rem;
+      }
+
+      .stat-value {
+        font-family: 'Syne', sans-serif;
+        font-weight: 800;
+        font-size: 2rem;
+        letter-spacing: -0.02em;
+      }
+
+      .stat-sub {
+        font-size: 0.8rem;
+        color: var(--text2);
+        margin-top: 0.25rem;
+      }
+
+      /* ── SECTION ── */
+      .section {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+      }
+
+      .section-title {
+        font-family: 'Syne', sans-serif;
+        font-weight: 700;
+        font-size: 1.1rem;
+        letter-spacing: -0.01em;
+      }
+
+      /* ── EXPENSE LIST ── */
+      .expense-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.875rem 1rem;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        margin-bottom: 0.5rem;
+        background: var(--surface2);
+        transition: border-color 0.2s;
+      }
+
+      .expense-item:hover { border-color: var(--accent); }
+
+      .expense-left { display: flex; align-items: center; gap: 0.875rem; }
+
+      .expense-icon {
+        width: 38px; height: 38px;
+        border-radius: 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem;
+      }
+
+      .expense-desc {
+        font-weight: 500;
+        font-size: 0.9rem;
+      }
+
+      .expense-meta {
+        font-size: 0.75rem;
+        color: var(--text2);
+        margin-top: 0.15rem;
+        font-family: 'DM Mono', monospace;
+      }
+
+      .expense-amount {
+        font-family: 'Syne', sans-serif;
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--accent2);
+      }
+
+      .expense-usd {
+        font-size: 0.75rem;
+        color: var(--text2);
+        font-family: 'DM Mono', monospace;
+        text-align: right;
+        margin-top: 0.1rem;
+      }
+
+      /* ── BUDGET BARS ── */
+      .budget-item {
+        margin-bottom: 1.25rem;
+      }
+
+      .budget-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
+
+      .budget-category {
+        font-weight: 500;
+        font-size: 0.9rem;
+      }
+
+      .budget-amounts {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.78rem;
+        color: var(--text2);
+      }
+
+      .budget-bar-track {
+        height: 6px;
+        background: var(--surface2);
+        border-radius: 99px;
+        overflow: hidden;
+      }
+
+      .budget-bar-fill {
+        height: 100%;
+        border-radius: 99px;
+        transition: width 0.5s ease;
+      }
+
+      .budget-bar-fill.ok { background: var(--accent3); }
+      .budget-bar-fill.warning { background: var(--warning); }
+      .budget-bar-fill.over { background: var(--danger); }
+
+      .budget-status {
+        font-size: 0.72rem;
+        margin-top: 0.35rem;
+        font-family: 'DM Mono', monospace;
+      }
+
+      .budget-status.over { color: var(--danger); }
+      .budget-status.ok { color: var(--accent3); }
+
+      /* ── AI NARRATIVE ── */
+      .ai-card {
+        background: linear-gradient(135deg, rgba(124,109,250,0.1), rgba(250,109,138,0.05));
+        border: 1px solid rgba(124,109,250,0.3);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .ai-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      .ai-icon {
+        width: 36px; height: 36px;
+        border-radius: 10px;
+        background: var(--accent);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem;
+      }
+
+      .ai-title {
+        font-family: 'Syne', sans-serif;
+        font-weight: 700;
+        font-size: 1rem;
+      }
+
+      .ai-badge {
+        font-size: 0.7rem;
+        background: rgba(124,109,250,0.2);
+        color: var(--accent);
+        padding: 0.2rem 0.5rem;
+        border-radius: 6px;
+        font-family: 'DM Mono', monospace;
+        margin-left: auto;
+      }
+
+      .ai-narrative {
+        font-size: 0.9rem;
+        line-height: 1.7;
+        color: var(--text2);
+      }
+
+      /* ── FORM GRID ── */
+      .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+
+      .form-grid .full { grid-column: 1 / -1; }
+
+      /* ── MONTH PICKER ── */
+      .month-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
+      }
+
+      .month-bar label { margin: 0; text-transform: none; font-size: 0.85rem; }
+
+      .month-bar input {
+        width: auto;
+        border: 1px solid var(--border);
+        background: var(--surface2);
+        padding: 0.4rem 0.75rem;
+        font-family: 'DM Mono', monospace;
+        font-size: 0.95rem;
+        border-radius: 8px;
+        color: var(--text);
+        color-scheme: dark;
+      }
+
+      /* ── TOAST ── */
+      .toast-container {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        z-index: 999;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .toast {
+        padding: 0.75rem 1.25rem;
+        border-radius: 10px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        animation: slideIn 0.3s ease;
+        max-width: 320px;
+      }
+
+      .toast.success { background: rgba(109,250,188,0.15); border: 1px solid var(--success); color: var(--success); }
+      .toast.error { background: rgba(250,109,109,0.15); border: 1px solid var(--danger); color: var(--danger); }
+
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+
+      /* ── MODAL ── */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(4px);
+        z-index: 200;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+      }
+
+      .modal {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 2rem;
+        width: 100%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+
+      .modal-title {
+        font-family: 'Syne', sans-serif;
+        font-weight: 700;
+        font-size: 1.2rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .modal-footer {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+      }
+
+      /* ── EMPTY STATE ── */
+      .empty {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text2);
+      }
+
+      .empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+      .empty-text { font-size: 0.9rem; }
+
+      /* ── LOADING ── */
+      .loading {
+        display: inline-block;
+        width: 16px; height: 16px;
+        border: 2px solid rgba(255,255,255,0.2);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+        vertical-align: middle;
+      }
+
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* ── CATEGORY CHIPS ── */
+      .category-icons { Food: '🍕', Transport: '🚗', Housing: '🏠', Entertainment: '🎮', Health: '💊', Utilities: '⚡', Education: '📚', Shopping: '🛍️', Travel: '✈️', Other: '📦' }
+
+      .tag {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.72rem;
+        font-family: 'DM Mono', monospace;
+        background: rgba(124,109,250,0.15);
+        color: var(--accent);
+        border: 1px solid rgba(124,109,250,0.3);
+      }
+
+      .tag.over {
+        background: rgba(250,109,109,0.15);
+        color: var(--danger);
+        border-color: rgba(250,109,109,0.3);
+      }
+
+      /* scrollbar */
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: var(--bg); }
+      ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <!-- LANDING PAGE -->
+      <div id="landingPage" style="display: none">
+        <div
+          style="
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+          "
+        >
+          <div
+            style="
+              font-family: &quot;Syne&quot;, sans-serif;
+              font-weight: 800;
+              font-size: 3.5rem;
+              letter-spacing: -0.03em;
+              margin-bottom: 1rem;
+            "
+          >
+            Expense<span style="color: var(--accent)">.</span>
+          </div>
+          <div
+            style="
+              color: var(--text2);
+              font-size: 1.1rem;
+              margin-bottom: 0.5rem;
+            "
+          >
+            Track smarter. Spend better.
+          </div>
+          <div
+            style="
+              color: var(--text2);
+              font-size: 0.9rem;
+              max-width: 480px;
+              margin-bottom: 3rem;
+              line-height: 1.6;
+            "
+          >
+            A personal and team expense tracker with AI-powered monthly
+            insights, multi-currency support, and real-time budget tracking.
+          </div>
+          <div
+            style="
+              display: flex;
+              gap: 1rem;
+              flex-wrap: wrap;
+              justify-content: center;
+            "
+          >
+            <button
+              onclick="showLogin()"
+              style="
+                background: var(--accent);
+                color: white;
+                border: none;
+                padding: 0.9rem 2.5rem;
+                border-radius: 12px;
+                font-family: &quot;Syne&quot;, sans-serif;
+                font-weight: 700;
+                font-size: 1rem;
+                cursor: pointer;
+                transition: all 0.2s;
+              "
+            >
+              Get Started
+            </button>
+          </div>
+          <div
+            style="
+              margin-top: 4rem;
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 1.5rem;
+              max-width: 900px;
+              width: 100%;
+            "
+          >
+            <div
+              style="
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                padding: 1.5rem;
+                text-align: left;
+              "
+            >
+              <div style="font-size: 1.5rem; margin-bottom: 0.5rem">🤖</div>
+              <div
+                style="
+                  font-family: &quot;Syne&quot;, sans-serif;
+                  font-weight: 700;
+                  font-size: 0.9rem;
+                  margin-bottom: 0.25rem;
+                "
+              >
+                AI Insights
+              </div>
+              <div style="color: var(--text2); font-size: 0.8rem">
+                Monthly financial analysis powered by Llama 3
+              </div>
+            </div>
+            <div
+              style="
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                padding: 1.5rem;
+                text-align: left;
+              "
+            >
+              <div style="font-size: 1.5rem; margin-bottom: 0.5rem">💱</div>
+              <div
+                style="
+                  font-family: &quot;Syne&quot;, sans-serif;
+                  font-weight: 700;
+                  font-size: 0.9rem;
+                  margin-bottom: 0.25rem;
+                "
+              >
+                Multi-Currency
+              </div>
+              <div style="color: var(--text2); font-size: 0.8rem">
+                Log expenses in any currency, converted to USD
+              </div>
+            </div>
+            <div
+              style="
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                padding: 1.5rem;
+                text-align: left;
+              "
+            >
+              <div style="font-size: 1.5rem; margin-bottom: 0.5rem">👥</div>
+              <div
+                style="
+                  font-family: &quot;Syne&quot;, sans-serif;
+                  font-weight: 700;
+                  font-size: 0.9rem;
+                  margin-bottom: 0.25rem;
+                "
+              >
+                Group Expenses
+              </div>
+              <div style="color: var(--text2); font-size: 0.8rem">
+                Split bills equally, by percentage, or exact amounts
+              </div>
+            </div>
+            <div
+              style="
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                padding: 1.5rem;
+                text-align: left;
+              "
+            >
+              <div style="font-size: 1.5rem; margin-bottom: 0.5rem">🔐</div>
+              <div
+                style="
+                  font-family: &quot;Syne&quot;, sans-serif;
+                  font-weight: 700;
+                  font-size: 0.9rem;
+                  margin-bottom: 0.25rem;
+                "
+              >
+                2FA Security
+              </div>
+              <div style="color: var(--text2); font-size: 0.8rem">
+                Protect your account with Google Authenticator
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AUTH SCREEN -->
+      <div class="auth-screen" id="authScreen" style="display: none">
+        <div class="auth-card">
+          <div class="auth-title">Expense<span>.</span></div>
+          <div class="auth-sub">Track smarter. Spend better.</div>
+          <div class="auth-toggle">
+            <button
+              class="auth-toggle-btn active"
+              onclick="switchAuth('login')"
+            >
+              Sign In
+            </button>
+            <button class="auth-toggle-btn" onclick="switchAuth('register')">
+              Register
+            </button>
+          </div>
+
+          <!-- LOGIN -->
+          <div id="loginForm">
+            <div class="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                id="loginEmail"
+                placeholder="you@example.com"
+              />
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <div style="position: relative">
+                <input
+                  type="password"
+                  id="loginPassword"
+                  placeholder="••••••••"
+                  style="padding-right: 2.5rem"
+                />
+                <button
+                  type="button"
+                  onclick="togglePasswordVisibility('loginPassword', this)"
+                  style="
+                    position: absolute;
+                    right: 0.75rem;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    color: var(--text2);
+                    font-size: 1rem;
+                  "
+                >
+                  👁
+                </button>
+              </div>
+            </div>
+            <div class="form-group" id="totpField" style="display: none">
+              <label>2FA Code</label>
+              <input
+                type="text"
+                id="loginTotp"
+                placeholder="6-digit code"
+                maxlength="6"
+              />
+            </div>
+            <button class="btn btn-primary" onclick="login()">Sign In</button>
+          </div>
+
+          <!-- REGISTER -->
+          <div id="registerForm" style="display: none">
+            <div class="form-group">
+              <label>Full Name</label>
+              <input type="text" id="regName" placeholder="Ali Hassan" />
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="regEmail" placeholder="you@example.com" />
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <div style="position: relative">
+                <input
+                  type="password"
+                  id="regPassword"
+                  placeholder="Create a password"
+                  oninput="checkPasswordStrength()"
+                  style="padding-right: 2.5rem"
+                />
+                <button
+                  type="button"
+                  onclick="togglePasswordVisibility('regPassword', this)"
+                  style="
+                    position: absolute;
+                    right: 0.75rem;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    color: var(--text2);
+                    font-size: 1rem;
+                  "
+                >
+                  👁
+                </button>
+              </div>
+              <div
+                id="passwordRequirements"
+                style="margin-top: 0.5rem; display: none"
+              >
+                <div
+                  id="req-length"
+                  style="
+                    font-size: 0.78rem;
+                    padding: 0.2rem 0;
+                    color: var(--danger);
+                  "
+                >
+                  ✗ At least 8 characters
+                </div>
+                <div
+                  id="req-upper"
+                  style="
+                    font-size: 0.78rem;
+                    padding: 0.2rem 0;
+                    color: var(--danger);
+                  "
+                >
+                  ✗ At least one uppercase letter
+                </div>
+                <div
+                  id="req-lower"
+                  style="
+                    font-size: 0.78rem;
+                    padding: 0.2rem 0;
+                    color: var(--danger);
+                  "
+                >
+                  ✗ At least one lowercase letter
+                </div>
+                <div
+                  id="req-number"
+                  style="
+                    font-size: 0.78rem;
+                    padding: 0.2rem 0;
+                    color: var(--danger);
+                  "
+                >
+                  ✗ At least one number
+                </div>
+                <div
+                  id="req-symbol"
+                  style="
+                    font-size: 0.78rem;
+                    padding: 0.2rem 0;
+                    color: var(--danger);
+                  "
+                >
+                  ✗ At least one symbol (!@#$...)
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Base Currency</label>
+              <select id="regCurrency">
+                <option value="USD">USD — US Dollar</option>
+                <option value="EUR">EUR — Euro</option>
+                <option value="GBP">GBP — British Pound</option>
+                <option value="TRY">TRY — Turkish Lira</option>
+                <option value="JPY">JPY — Japanese Yen</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="register()">
+              Create Account
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN APP -->
+      <div id="mainApp" style="display: none">
+        <nav>
+          <div class="nav-brand">Expense<span>.</span></div>
+          <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showPage('dashboard')">
+              Dashboard
+            </button>
+            <button class="nav-tab" onclick="showPage('expenses')">
+              Expenses
+            </button>
+            <button class="nav-tab" onclick="showPage('budgets')">
+              Budgets
+            </button>
+            <button class="nav-tab" onclick="showPage('report')">
+              AI Report
+            </button>
+            <button class="nav-tab" onclick="showPage('groups')">Groups</button>
+            <button class="nav-tab" onclick="showPage('settings')">
+              Settings
+            </button>
+          </div>
+          <div class="nav-user">
+            <button
+              onclick="toggleTheme()"
+              style="
+                background: var(--surface2);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 0.4rem 0.75rem;
+                cursor: pointer;
+                font-size: 1rem;
+                color: var(--text);
+              "
+              id="themeBtn"
+            >
+              🌙
+            </button>
+            <div class="user-badge" id="userBadge">—</div>
+            <button class="btn-logout" onclick="logout()">Sign out</button>
+          </div>
+        </nav>
+
+        <div class="main">
+          <!-- MONTH BAR -->
+          <div class="month-bar">
+            <label>Viewing month:</label>
+            <input type="month" id="monthPicker" onchange="onMonthChange()" />
+          </div>
+
+          <!-- DASHBOARD PAGE -->
+          <div class="page active" id="page-dashboard">
+            <div class="stats-grid" id="statsGrid">
+              <div class="stat-card purple">
+                <div class="stat-label">Total Spent</div>
+                <div class="stat-value" id="statTotal">—</div>
+                <div class="stat-sub">this month (USD)</div>
+              </div>
+              <div class="stat-card pink">
+                <div class="stat-label">Expenses</div>
+                <div class="stat-value" id="statCount">—</div>
+                <div class="stat-sub">transactions</div>
+              </div>
+              <div class="stat-card green">
+                <div class="stat-label">vs Last Month</div>
+                <div class="stat-value" id="statMoM">—</div>
+                <div class="stat-sub">change</div>
+              </div>
+              <div class="stat-card orange">
+                <div class="stat-label">Over Budget</div>
+                <div class="stat-value" id="statOver">—</div>
+                <div class="stat-sub">categories</div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Recent Expenses</div>
+                <button
+                  class="btn btn-secondary btn-sm"
+                  onclick="showPage('expenses')"
+                >
+                  View all
+                </button>
+              </div>
+              <div id="recentExpenses">
+                <div class="empty">
+                  <div class="empty-icon">💸</div>
+                  <div class="empty-text">No expenses this month</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Budget Overview</div>
+                <button
+                  class="btn btn-secondary btn-sm"
+                  onclick="showPage('budgets')"
+                >
+                  Manage
+                </button>
+              </div>
+              <div id="dashBudgets">
+                <div class="empty">
+                  <div class="empty-icon">📊</div>
+                  <div class="empty-text">No budgets set</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- EXPENSES PAGE -->
+          <div class="page" id="page-expenses">
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Add Expense</div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Amount</label>
+                  <input
+                    type="number"
+                    id="expAmount"
+                    placeholder="0.00"
+                    min="0.01"
+                    step="0.01"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>Currency</label>
+                  <select id="expCurrency">
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                    <option value="TRY" selected>TRY</option>
+                    <option value="JPY">JPY</option>
+                    <option value="CAD">CAD</option>
+                    <option value="AUD">AUD</option>
+                    <option value="CHF">CHF</option>
+                    <option value="CNY">CNY</option>
+                    <option value="SEK">SEK</option>
+                    <option value="NOK">NOK</option>
+                    <option value="DKK">DKK</option>
+                    <option value="NZD">NZD</option>
+                    <option value="SGD">SGD</option>
+                    <option value="HKD">HKD</option>
+                    <option value="KRW">KRW</option>
+                    <option value="INR">INR</option>
+                    <option value="BRL">BRL</option>
+                    <option value="MXN">MXN</option>
+                    <option value="ZAR">ZAR</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Category</label>
+                  <select id="expCategory"></select>
+                </div>
+                <div class="form-group">
+                  <label>Date</label>
+                  <input type="date" id="expDate" />
+                </div>
+                <div class="form-group">
+                  <label>Payment Method</label>
+                  <select id="expPayment">
+                    <option value="">— optional —</option>
+                    <option value="cash">Cash</option>
+                    <option value="credit_card">Credit Card</option>
+                    <option value="debit_card">Debit Card</option>
+                    <option value="transfer">Transfer</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Description</label>
+                  <input
+                    type="text"
+                    id="expDesc"
+                    placeholder="What did you spend on?"
+                  />
+                </div>
+                <div class="full">
+                  <button class="btn btn-primary" onclick="addExpense()">
+                    Add Expense
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">All Expenses</div>
+                <span id="expenseCount" class="tag">0 items</span>
+              </div>
+              <div id="expenseList">
+                <div class="empty">
+                  <div class="empty-icon">💸</div>
+                  <div class="empty-text">No expenses this month</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- BUDGETS PAGE -->
+          <div class="page" id="page-budgets">
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Set Budget</div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Category</label>
+                  <select id="budCategory"></select>
+                </div>
+                <div class="form-group">
+                  <label>Monthly Limit (USD)</label>
+                  <input
+                    type="number"
+                    id="budAmount"
+                    placeholder="500.00"
+                    min="1"
+                    step="0.01"
+                  />
+                </div>
+                <div class="full">
+                  <button class="btn btn-primary" onclick="addBudget()">
+                    Set Budget
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Budget Tracking</div>
+              </div>
+              <div id="budgetList">
+                <div class="empty">
+                  <div class="empty-icon">📊</div>
+                  <div class="empty-text">No budgets set for this month</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- REPORT PAGE -->
+          <div class="page" id="page-report">
+            <div class="ai-card" id="aiCard">
+              <div class="ai-header">
+                <div class="ai-icon">🤖</div>
+                <div>
+                  <div class="ai-title">AI Financial Insight</div>
+                  <div style="font-size: 0.75rem; color: var(--text2)">
+                    Powered by Llama 3
+                  </div>
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    margin-left: auto;
+                  "
+                >
+                  <div class="ai-badge" id="aiBadge">—</div>
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    onclick="regenerateReport()"
+                  >
+                    ↺ Regenerate
+                  </button>
+                </div>
+              </div>
+              <div class="ai-narrative" id="aiNarrative">
+                Loading your financial insights...
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Category Breakdown</div>
+              </div>
+              <div id="reportCategories">
+                <div class="empty">
+                  <div class="empty-icon">📈</div>
+                  <div class="empty-text">No data for this month</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Summary</div>
+              </div>
+              <div id="reportSummary"></div>
+            </div>
+          </div>
+
+          <!-- GROUPS PAGE -->
+          <div class="page" id="page-groups">
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Create Group</div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group full">
+                  <label>Group Name</label>
+                  <input
+                    type="text"
+                    id="groupName"
+                    placeholder="e.g. Apartment, Trip to Paris"
+                  />
+                </div>
+                <div class="full">
+                  <button class="btn btn-primary" onclick="createGroup()">
+                    Create Group
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Your Groups</div>
+              </div>
+              <div id="groupsList">
+                <div class="empty">
+                  <div class="empty-icon">👥</div>
+                  <div class="empty-text">No groups yet</div>
+                </div>
+              </div>
+            </div>
+            <!-- Group Detail -->
+            <div id="groupDetail" style="display: none">
+              <div class="section">
+                <div class="section-header">
+                  <div class="section-title" id="groupDetailName">Group</div>
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    onclick="closeGroupDetail()"
+                  >
+                    ← Back
+                  </button>
+                </div>
+                <div style="margin-bottom: 1.5rem">
+                  <div
+                    style="
+                      font-weight: 600;
+                      margin-bottom: 0.75rem;
+                      font-size: 0.9rem;
+                    "
+                  >
+                    Members
+                  </div>
+                  <div id="groupMembers"></div>
+                  <div
+                    style="display: flex; gap: 0.5rem; margin-top: 0.75rem"
+                    id="addMemberSection"
+                  >
+                    <input
+                      type="email"
+                      id="addMemberEmail"
+                      placeholder="Search by email..."
+                      style="flex: 1"
+                    />
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      onclick="searchAndAddMember()"
+                      style="width: auto"
+                    >
+                      Add Member
+                    </button>
+                  </div>
+                </div>
+                <div style="margin-bottom: 1.5rem">
+                  <div
+                    style="
+                      font-weight: 600;
+                      margin-bottom: 0.75rem;
+                      font-size: 0.9rem;
+                    "
+                  >
+                    Add Group Expense
+                  </div>
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label>Amount</label>
+                      <input
+                        type="number"
+                        id="gExpAmount"
+                        placeholder="0.00"
+                        min="0.01"
+                        step="0.01"
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label>Currency</label>
+                      <select id="gExpCurrency">
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                        <option value="TRY" selected>TRY</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Category</label>
+                      <select id="gExpCategory"></select>
+                    </div>
+                    <div class="form-group">
+                      <label>Date</label>
+                      <input type="date" id="gExpDate" />
+                    </div>
+                    <div class="form-group">
+                      <label>Description</label>
+                      <input
+                        type="text"
+                        id="gExpDesc"
+                        placeholder="What was this for?"
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label>Split Type</label>
+                      <select id="gExpSplitType" onchange="renderSplitInputs()">
+                        <option value="equal">Equal</option>
+                        <option value="percentage">Percentage</option>
+                        <option value="exact">Exact Amount</option>
+                      </select>
+                    </div>
+                    <div class="full" id="splitInputsContainer"></div>
+                    <div class="full">
+                      <button
+                        class="btn btn-primary"
+                        onclick="addGroupExpense()"
+                      >
+                        Add Group Expense
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <div
+                    style="
+                      font-weight: 600;
+                      margin-bottom: 0.75rem;
+                      font-size: 0.9rem;
+                    "
+                  >
+                    Group Expenses
+                  </div>
+                  <div id="groupExpensesList">
+                    <div class="empty">
+                      <div class="empty-icon">💸</div>
+                      <div class="empty-text">No expenses yet</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SETTINGS PAGE -->
+          <div class="page" id="page-settings">
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Two-Factor Authentication</div>
+              </div>
+              <div
+                id="tfaStatus"
+                style="
+                  margin-bottom: 1rem;
+                  color: var(--text2);
+                  font-size: 0.9rem;
+                "
+              >
+                Loading 2FA status...
+              </div>
+              <div id="tfaSetup" style="display: none">
+                <p
+                  style="
+                    color: var(--text2);
+                    font-size: 0.9rem;
+                    margin-bottom: 1rem;
+                  "
+                >
+                  Scan the QR code with Google Authenticator, then enter the
+                  6-digit code.
+                </p>
+                <div id="qrCodeContainer" style="margin-bottom: 1rem"></div>
+                <div class="form-group">
+                  <label>Verification Code</label>
+                  <input
+                    type="text"
+                    id="tfaCode"
+                    placeholder="6-digit code"
+                    maxlength="6"
+                  />
+                </div>
+                <button class="btn btn-primary" onclick="verify2FA()">
+                  Verify & Enable 2FA
+                </button>
+              </div>
+              <div id="tfaEnable" style="display: none">
+                <button class="btn btn-primary" onclick="setup2FA()">
+                  Enable 2FA
+                </button>
+              </div>
+              <div id="tfaDisable" style="display: none">
+                <p
+                  style="
+                    color: var(--accent3);
+                    font-size: 0.9rem;
+                    margin-bottom: 1rem;
+                  "
+                >
+                  ✓ Two-factor authentication is enabled.
+                </p>
+                <div class="form-group">
+                  <label>Enter 2FA Code to Disable</label>
+                  <input
+                    type="text"
+                    id="tfaDisableCode"
+                    placeholder="6-digit code"
+                    maxlength="6"
+                  />
+                </div>
+                <button class="btn btn-danger" onclick="disable2FA()">
+                  Disable 2FA
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+      const API = "https://expense-tracker-backend-zskj.onrender.com";
+      let token = localStorage.getItem("token");
+      let userId = localStorage.getItem("userId");
+      let userName = localStorage.getItem("userName");
+      let categories = [];
+
+      function authHeaders() {
+        return {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        };
+      }
+
+      async function apiFetch(url, options = {}) {
+        const res = await fetch(url, {
+          ...options,
+          headers: { ...authHeaders(), ...(options.headers || {}) },
+        });
+
+        if (res.status === 401) {
+          // Token expired or invalid — force logout
+          token = null;
+          userId = null;
+          userName = null;
+          localStorage.clear();
+          document.getElementById("mainApp").style.display = "none";
+          document.getElementById("authScreen").style.display = "none";
+          document.getElementById("landingPage").style.display = "block";
+
+          // Show message after a tiny delay so landing page renders first
+          setTimeout(
+            () =>
+              toast("Your session has expired. Please sign in again.", "error"),
+            100,
+          );
+          throw new Error("Unauthorized");
+        }
+
+        return res;
+      }
+
+      const CATEGORY_ICONS = {
+        Food: "🍕",
+        Transport: "🚗",
+        Housing: "🏠",
+        Entertainment: "🎮",
+        Health: "💊",
+        Utilities: "⚡",
+        Education: "📚",
+        Shopping: "🛍️",
+        Travel: "✈️",
+        Other: "📦",
+      };
+
+      // ── INIT ──
+      window.onload = () => {
+        initTheme();
+        const now = new Date();
+        const m = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        document.getElementById("monthPicker").value = m;
+        document.getElementById("expDate").value = now
+          .toISOString()
+          .split("T")[0];
+
+        if (token && userId) {
+          showApp();
+        } else {
+          document.getElementById("landingPage").style.display = "block";
+        }
+      };
+
+      function showLogin() {
+        document.getElementById("landingPage").style.display = "none";
+        document.getElementById("authScreen").style.display = "flex";
+      }
+
+      // ── AUTH ──
+      function switchAuth(mode) {
+        document.getElementById("loginForm").style.display =
+          mode === "login" ? "block" : "none";
+        document.getElementById("registerForm").style.display =
+          mode === "register" ? "block" : "none";
+        document.querySelectorAll(".auth-toggle-btn").forEach((b, i) => {
+          b.classList.toggle(
+            "active",
+            (mode === "login" && i === 0) || (mode === "register" && i === 1),
+          );
+        });
+      }
+
+      async function login() {
+        const email = document.getElementById("loginEmail").value;
+        const password = document.getElementById("loginPassword").value;
+        const totp_code = document.getElementById("loginTotp")?.value || null;
+        if (!email || !password)
+          return toast("Please fill in all fields", "error");
+
+        try {
+          const body = { email, password };
+          if (totp_code) body.totp_code = totp_code;
+
+          const res = await fetch(`${API}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const data = await res.json();
+
+          // 2FA required
+          if (res.status === 403 && data.detail?.includes("2FA")) {
+            document.getElementById("totpField").style.display = "block";
+            return toast("Enter your 2FA code and sign in again", "error");
+          }
+
+          if (!res.ok) return toast(data.detail || "Login failed", "error");
+
+          token = data.access_token;
+          localStorage.setItem("token", token);
+
+          const meRes = await fetch(`${API}/auth/me`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+          const me = await meRes.json();
+          userId = me.id;
+          userName = me.name;
+          localStorage.setItem("userId", userId);
+          localStorage.setItem("userName", userName);
+
+          showApp();
+          toast(`Welcome back, ${me.name}!`, "success");
+        } catch (e) {
+          toast("Connection error", "error");
+        }
+      }
+
+      function validatePassword(password) {
+        if (password.length < 8)
+          return "Password must be at least 8 characters";
+        if (!/[A-Z]/.test(password))
+          return "Password must contain at least one uppercase letter";
+        if (!/[a-z]/.test(password))
+          return "Password must contain at least one lowercase letter";
+        if (!/[0-9]/.test(password))
+          return "Password must contain at least one number";
+        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password))
+          return "Password must contain at least one symbol";
+        return null;
+      }
+
+      async function register() {
+        const name = document.getElementById("regName").value;
+        const email = document.getElementById("regEmail").value;
+        const password = document.getElementById("regPassword").value;
+        const base_currency = document.getElementById("regCurrency").value;
+        if (!name || !email || !password)
+          return toast("Please fill in all fields", "error");
+
+        const allPassed =
+          document.getElementById("passwordRequirements") &&
+          [
+            "req-length",
+            "req-upper",
+            "req-lower",
+            "req-number",
+            "req-symbol",
+          ].every(
+            (id) =>
+              document.getElementById(id)?.style.color === "var(--success)",
+          );
+
+        if (!allPassed) {
+          document.getElementById("passwordRequirements").style.display =
+            "block";
+          checkPasswordStrength();
+          return toast("Please meet all password requirements", "error");
+        }
+
+        try {
+          const res = await fetch(`${API}/auth/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password, base_currency }),
+          });
+          const data = await res.json();
+          if (!res.ok)
+            return toast(data.detail || "Registration failed", "error");
+          toast("Account created! Please sign in.", "success");
+          switchAuth("login");
+        } catch (e) {
+          toast("Connection error", "error");
+        }
+      }
+
+      function logout() {
+        token = null;
+        userId = null;
+        userName = null;
+        localStorage.clear();
+        document.getElementById("mainApp").style.display = "none";
+        document.getElementById("authScreen").style.display = "flex";
+        document.getElementById("landingPage").style.display = "block";
+
+        // Clear login fields
+        document.getElementById("loginEmail").value = "";
+        document.getElementById("loginPassword").value = "";
+        document.getElementById("loginTotp").value = "";
+        document.getElementById("totpField").style.display = "none";
+      }
+
+      function showApp() {
+        document.getElementById("authScreen").style.display = "none";
+        document.getElementById("mainApp").style.display = "block";
+        document.getElementById("userBadge").textContent =
+          userName || userId?.slice(0, 8) + "...";
+        const lastPage = localStorage.getItem("activePage") || "dashboard";
+        loadCategories().then(() => {
+          loadAll();
+          showPage(lastPage);
+        });
+      }
+
+      // ── NAVIGATION ──
+      function showPage(name) {
+        document
+          .querySelectorAll(".page")
+          .forEach((p) => p.classList.remove("active"));
+        document
+          .querySelectorAll(".nav-tab")
+          .forEach((t) => t.classList.remove("active"));
+        document.getElementById(`page-${name}`).classList.add("active");
+        const tabs = [
+          "dashboard",
+          "expenses",
+          "budgets",
+          "report",
+          "groups",
+          "settings",
+        ];
+        document
+          .querySelectorAll(".nav-tab")
+          [tabs.indexOf(name)]?.classList.add("active");
+        localStorage.setItem("activePage", name);
+
+        // Hide month bar on groups and settings pages
+        const monthBar = document.querySelector(".month-bar");
+        if (monthBar) {
+          monthBar.style.display = name === "settings" ? "none" : "flex";
+        }
+
+        if (name === "report") loadReport();
+        if (name === "groups") {
+          document.getElementById("groupDetail").style.display = "none";
+          const section = document
+            .getElementById("groupsList")
+            ?.closest(".section");
+          if (section) section.style.display = "block";
+          loadGroups();
+        }
+        if (name === "settings") load2FAStatus();
+      }
+
+      function onMonthChange() {
+        loadAll();
+        if (
+          document.getElementById("page-report").classList.contains("active")
+        ) {
+          loadReport();
+        }
+      }
+
+      function getMonth() {
+        return document.getElementById("monthPicker").value;
+      }
+
+      // ── LOAD ALL ──
+      async function loadAll() {
+        await Promise.all([loadExpenses(), loadBudgets()]);
+        updateDashboard();
+      }
+
+      // ── CATEGORIES ──
+      async function loadCategories() {
+        try {
+          const res = await apiFetch(`${API}/categories`);
+          if (!res.ok) return;
+          const data = await res.json();
+          categories = data;
+          populateCategorySelects();
+        } catch (e) {
+          console.error("Failed to load categories:", e);
+        }
+      }
+
+      function populateCategorySelects() {
+        ["expCategory", "budCategory"].forEach((id) => {
+          const sel = document.getElementById(id);
+          sel.innerHTML = "";
+          categories.forEach((c) => {
+            const opt = document.createElement("option");
+            opt.value = c.id;
+            opt.textContent = `${CATEGORY_ICONS[c.name] || "📦"} ${c.name}`;
+            sel.appendChild(opt);
+          });
+        });
+      }
+
+      // ── EXPENSES ──
+      let allExpenses = [];
+
+      async function loadExpenses() {
+        const month = getMonth();
+        try {
+          const res = await apiFetch(`${API}/expenses?month=${month}`);
+          allExpenses = await res.json();
+          currentExpensePage = 1;
+          renderExpenses();
+        } catch (e) {}
+      }
+      let currentExpensePage = 1;
+      const EXPENSES_PER_PAGE = 5;
+
+      function renderExpenses() {
+        const container = document.getElementById("expenseList");
+        const recent = document.getElementById("recentExpenses");
+        document.getElementById("expenseCount").textContent =
+          `${allExpenses.length} items`;
+
+        if (!allExpenses.length) {
+          const empty = `<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">No expenses this month</div></div>`;
+          container.innerHTML = empty;
+          recent.innerHTML = empty;
+          return;
+        }
+
+        // Pagination
+        const totalPages = Math.ceil(allExpenses.length / EXPENSES_PER_PAGE);
+        const start = (currentExpensePage - 1) * EXPENSES_PER_PAGE;
+        const end = start + EXPENSES_PER_PAGE;
+        const pageExpenses = allExpenses.slice(start, end);
+
+        const html = pageExpenses
+          .map((e) => {
+            const cat = categories.find((c) => c.id === e.category_id);
+            const icon = CATEGORY_ICONS[cat?.name] || "📦";
+            return `
+      <div class="expense-item">
+        <div class="expense-left">
+          <div class="expense-icon">${icon}</div>
+          <div>
+            <div class="expense-desc">${e.description || "Expense"}</div>
+            <div class="expense-meta">${e.expense_date} · ${cat?.name || "Unknown"} · ${e.currency_code}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.75rem">
+          <div>
+            <div class="expense-amount">${parseFloat(e.original_amount).toFixed(2)} ${e.currency_code}</div>
+            <div class="expense-usd">$${parseFloat(e.amount_usd).toFixed(2)} USD</div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">✕</button>
+        </div>
+      </div>`;
+          })
+          .join("");
+
+        // Pagination controls
+        const pagination = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <button class="btn btn-secondary btn-sm" onclick="changeExpensePage(${currentExpensePage - 1})" ${currentExpensePage === 1 ? 'disabled style="opacity:0.4"' : ""}>← Prev</button>
+      <span style="font-size:0.85rem;color:var(--text2)">Page ${currentExpensePage} of ${totalPages} · ${allExpenses.length} total</span>
+      <button class="btn btn-secondary btn-sm" onclick="changeExpensePage(${currentExpensePage + 1})" ${currentExpensePage === totalPages ? 'disabled style="opacity:0.4"' : ""}>Next →</button>
+    </div>`;
+
+        container.innerHTML = html + (totalPages > 1 ? pagination : "");
+
+        // Recent expenses — always show latest 5
+        recent.innerHTML = allExpenses
+          .slice(0, 5)
+          .map((e) => {
+            const cat = categories.find((c) => c.id === e.category_id);
+            const icon = CATEGORY_ICONS[cat?.name] || "📦";
+            return `
+      <div class="expense-item">
+        <div class="expense-left">
+          <div class="expense-icon">${icon}</div>
+          <div>
+            <div class="expense-desc">${e.description || "Expense"}</div>
+            <div class="expense-meta">${e.expense_date} · ${cat?.name || "Unknown"}</div>
+          </div>
+        </div>
+        <div>
+          <div class="expense-amount">${parseFloat(e.original_amount).toFixed(2)} ${e.currency_code}</div>
+          <div class="expense-usd">$${parseFloat(e.amount_usd).toFixed(2)} USD</div>
+        </div>
+      </div>`;
+          })
+          .join("");
+      }
+
+      function changeExpensePage(page) {
+        const totalPages = Math.ceil(allExpenses.length / EXPENSES_PER_PAGE);
+        if (page < 1 || page > totalPages) return;
+        currentExpensePage = page;
+        renderExpenses();
+      }
+
+      async function addExpense() {
+        const amount = parseFloat(document.getElementById("expAmount").value);
+        const currency_code = document.getElementById("expCurrency").value;
+        const category_id = document.getElementById("expCategory").value;
+        const expense_date = document.getElementById("expDate").value;
+        const description = document.getElementById("expDesc").value;
+        const payment_method = document.getElementById("expPayment").value;
+
+        if (!amount || amount <= 0)
+          return toast("Enter a valid amount", "error");
+        if (!category_id) return toast("Select a category", "error");
+        if (!expense_date) return toast("Select a date", "error");
+
+        const body = {
+          original_amount: amount,
+          currency_code,
+          category_id,
+          expense_date,
+          description,
+        };
+        if (payment_method) body.payment_method = payment_method;
+
+        try {
+          const res = await apiFetch(`${API}/expenses`, {
+            method: "POST",
+            body: JSON.stringify(body),
+          });
+          const data = await res.json();
+          if (!res.ok)
+            return toast(data.detail || "Failed to add expense", "error");
+          toast("Expense added!", "success");
+          document.getElementById("expAmount").value = "";
+          document.getElementById("expDesc").value = "";
+          loadAll();
+        } catch (e) {
+          toast("Connection error", "error");
+        }
+      }
+
+      // ── BUDGETS ──
+      let allBudgets = [];
+
+      async function loadBudgets() {
+        const month = getMonth();
+        try {
+          const res = await fetch(`${API}/budgets?month=${month}`, {
+            headers: authHeaders(),
+          });
+          allBudgets = await res.json();
+          renderBudgets();
+        } catch (e) {}
+      }
+
+      function renderBudgets() {
+        const container = document.getElementById("budgetList");
+        const dash = document.getElementById("dashBudgets");
+
+        if (!allBudgets.length) {
+          const empty = `<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">No budgets set for this month</div></div>`;
+          container.innerHTML = empty;
+          dash.innerHTML = empty;
+          return;
+        }
+
+        const html = allBudgets
+          .map((b) => {
+            const pct =
+              b.budget_amount_usd > 0
+                ? Math.min((b.spent_usd / b.budget_amount_usd) * 100, 100)
+                : 0;
+            const cls = pct >= 100 ? "over" : pct >= 80 ? "warning" : "ok";
+            return `
+      <div class="budget-item">
+        <div class="budget-header">
+          <div class="budget-category">${CATEGORY_ICONS[b.category] || "📦"} ${b.category}</div>
+          <div style="display:flex;align-items:center;gap:0.75rem">
+            <div class="budget-amounts">$${parseFloat(b.spent_usd).toFixed(2)} / $${parseFloat(b.budget_amount_usd).toFixed(2)}</div>
+            <button class="btn btn-danger btn-sm" onclick="deleteBudget('${b.id}')">✕</button>
+          </div>
+        </div>
+        <div class="budget-bar-track">
+          <div class="budget-bar-fill ${cls}" style="width:${pct}%"></div>
+        </div>
+        <div class="budget-status ${b.over_budget ? "over" : "ok"}">
+          ${
+            b.over_budget
+              ? `⚠ Over by $${parseFloat(Math.abs(b.remaining_usd)).toFixed(2)}`
+              : `✓ $${parseFloat(b.remaining_usd).toFixed(2)} remaining`
+          }
+        </div>
+      </div>`;
+          })
+          .join("");
+
+        container.innerHTML = html;
+        dash.innerHTML = html;
+      }
+
+      async function addBudget() {
+        const category_id = document.getElementById("budCategory").value;
+        const amount = parseFloat(document.getElementById("budAmount").value);
+        const month = getMonth();
+        if (!amount || amount <= 0)
+          return toast("Enter a valid amount", "error");
+
+        const [year, mon] = month.split("-").map(Number);
+
+        try {
+          const res = await apiFetch(`${API}/budgets`, {
+            method: "POST",
+            body: JSON.stringify({
+              category_id,
+              month: mon,
+              year,
+              budget_amount_usd: amount,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok)
+            return toast(data.detail || "Failed to set budget", "error");
+          toast("Budget set!", "success");
+          document.getElementById("budAmount").value = "";
+          loadBudgets();
+        } catch (e) {
+          toast("Connection error", "error");
+        }
+      }
+
+      // ── DASHBOARD ──
+      function updateDashboard() {
+        const total = allExpenses.reduce(
+          (s, e) => s + parseFloat(e.amount_usd),
+          0,
+        );
+        const overCount = allBudgets.filter((b) => b.over_budget).length;
+
+        document.getElementById("statTotal").textContent =
+          `$${total.toFixed(2)}`;
+        document.getElementById("statCount").textContent = allExpenses.length;
+        document.getElementById("statOver").textContent = overCount;
+      }
+
+      // ── REPORT ──
+      async function loadReport() {
+        const month = getMonth();
+        document.getElementById("aiNarrative").textContent =
+          "Generating insight...";
+        document.getElementById("aiBadge").textContent = "⟳ loading";
+
+        try {
+          const res = await apiFetch(`${API}/reports/monthly?month=${month}`);
+          const data = await res.json();
+
+          // AI narrative
+          document.getElementById("aiNarrative").textContent =
+            data.ai_narrative || "No insight available for this period.";
+          document.getElementById("aiBadge").textContent = data.cached
+            ? "⚡ cached"
+            : "✨ fresh";
+
+          // Stats
+          const s = data.structured_summary;
+          document.getElementById("statMoM").textContent =
+            s.month_over_month_change_pct > 0
+              ? `+${s.month_over_month_change_pct}%`
+              : `${s.month_over_month_change_pct}%`;
+
+          // Category breakdown
+          if (s.categories?.length) {
+            document.getElementById("reportCategories").innerHTML = s.categories
+              .map((c) => {
+                const pct = c.budget_usd
+                  ? Math.min((c.spent_usd / c.budget_usd) * 100, 100)
+                  : 0;
+                const cls = c.over_budget
+                  ? "over"
+                  : pct >= 80
+                    ? "warning"
+                    : "ok";
+                return `
+          <div class="budget-item">
+            <div class="budget-header">
+              <div class="budget-category">
+                ${CATEGORY_ICONS[c.category_name] || "📦"} ${c.category_name}
+                ${c.over_budget ? '<span class="tag over">over budget</span>' : ""}
+              </div>
+              <div class="budget-amounts">$${c.spent_usd.toFixed(2)}${c.budget_usd ? ` / $${c.budget_usd.toFixed(2)}` : ""}</div>
+            </div>
+            ${
+              c.budget_usd
+                ? `
+            <div class="budget-bar-track">
+              <div class="budget-bar-fill ${cls}" style="width:${pct}%"></div>
+            </div>`
+                : ""
+            }
+          </div>`;
+              })
+              .join("");
+          }
+
+          // Summary
+          document.getElementById("reportSummary").innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card purple">
+          <div class="stat-label">Total Spent</div>
+          <div class="stat-value">$${s.total_spent_usd.toFixed(2)}</div>
+          <div class="stat-sub">this month</div>
+        </div>
+        <div class="stat-card pink">
+          <div class="stat-label">Previous Month</div>
+          <div class="stat-value">$${s.previous_month_total_usd.toFixed(2)}</div>
+          <div class="stat-sub">last month</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Transactions</div>
+          <div class="stat-value">${s.total_expenses_count}</div>
+          <div class="stat-sub">expenses logged</div>
+        </div>
+      </div>`;
+        } catch (e) {
+          document.getElementById("aiNarrative").textContent =
+            "Could not load report. Make sure the API is running.";
+        }
+      }
+
+      // ── DELETE EXPENSE ──
+      async function deleteExpense(expenseId) {
+        if (!confirm("Delete this expense?")) return;
+        try {
+          const res = await apiFetch(`${API}/expenses/${expenseId}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            return toast(data.detail || "Failed to delete", "error");
+          }
+          toast("Expense deleted", "success");
+          loadAll();
+        } catch (e) {
+          toast("Connection error", "error");
+        }
+      }
+
+      // ── DELETE BUDGET ──
+      async function deleteBudget(budgetId) {
+        if (!confirm("Delete this budget?")) return;
+        try {
+          const res = await apiFetch(`${API}/budgets/${budgetId}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            return toast(data.detail || "Failed to delete", "error");
+          }
+          toast("Budget deleted", "success");
+          loadBudgets();
+        } catch (e) {
+          toast("Connection error", "error");
+        }
+      }
+
+      async function regenerateReport() {
+        const month = getMonth();
+        document.getElementById("aiBadge").textContent = "⟳ generating...";
+        document.getElementById("aiNarrative").textContent =
+          "Generating fresh insight...";
+        try {
+          await apiFetch(`${API}/reports/monthly/regenerate?month=${month}`, {
+            method: "DELETE",
+          });
+          await loadReport();
+          toast("Report regenerated!", "success");
+        } catch (e) {
+          toast("Failed to regenerate", "error");
+        }
+      }
+
+      // ── GROUPS ──
+      let currentGroupId = null;
+      let groupMembers = [];
+
+      async function loadGroups() {
+        try {
+          const res = await fetch(`${API}/groups`, { headers: authHeaders() });
+          const data = await res.json();
+          const container = document.getElementById("groupsList");
+          if (!data.length) {
+            container.innerHTML =
+              '<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">No groups yet</div></div>';
+            return;
+          }
+          container.innerHTML = data
+            .map(
+              (g) => `
+      <div class="expense-item" style="cursor:pointer" onclick="openGroup('${g.id}', '${g.name}')">
+        <div class="expense-left">
+          <div class="expense-icon">👥</div>
+          <div>
+            <div class="expense-desc">${g.name}</div>
+            <div class="expense-meta">Tap to view</div>
+          </div>
+        </div>
+        <span class="tag">→</span>
+      </div>`,
+            )
+            .join("");
+        } catch (e) {
+          toast("Failed to load groups", "error");
+        }
+      }
+
+      async function createGroup() {
+        const name = document.getElementById("groupName").value.trim();
+        if (!name) return toast("Enter a group name", "error");
+        try {
+          const res = await apiFetch(`${API}/groups`, {
+            method: "POST",
+            body: JSON.stringify({ name }),
+          });
+          const data = await res.json();
+          if (!res.ok)
+            return toast(data.detail || "Failed to create group", "error");
+          document.getElementById("groupName").value = "";
+          toast("Group created!", "success");
+          loadGroups();
+        } catch (e) {
+          toast("Connection error", "error");
+        }
+      }
+
+      async function openGroup(groupId, groupName) {
+        currentGroupId = groupId;
+        document.getElementById("groupDetailName").textContent = groupName;
+        document.getElementById("groupDetail").style.display = "block";
+        document
+          .getElementById("groupsList")
+          .closest(".section").style.display = "none";
+        const now = new Date();
+        document.getElementById("gExpDate").value = now
+          .toISOString()
+          .split("T")[0];
+        const sel = document.getElementById("gExpCategory");
+        sel.innerHTML = "";
+        categories.forEach((c) => {
+          const opt = document.createElement("option");
+          opt.value = c.id;
+          opt.textContent = `${CATEGORY_ICONS[c.name] || "📦"} ${c.name}`;
+          sel.appendChild(opt);
+        });
+        await loadGroupMembers();
+        await loadGroupExpenses();
+        renderSplitInputs();
+      }
+
+      function closeGroupDetail() {
+        currentGroupId = null;
+        document.getElementById("groupDetail").style.display = "none";
+        document
+          .getElementById("groupsList")
+          .closest(".section").style.display = "block";
+      }
+
+      async function loadGroupMembers() {
+        try {
+          const res = await apiFetch(`${API}/groups/${currentGroupId}/members`);
+          groupMembers = await res.json();
+
+          // Get group info to know who the admin is
+          const groupRes = await apiFetch(`${API}/groups/${currentGroupId}`);
+          const groupInfo = await groupRes.json();
+          const adminId = groupInfo.admin_id;
+          const isAdmin = String(adminId) === String(userId);
+
+          document.getElementById("groupMembers").innerHTML = groupMembers
+            .map(
+              (m) => `
+      <div class="expense-item" style="padding:0.6rem 1rem">
+        <div class="expense-left">
+          <div class="expense-icon">👤</div>
+          <div>
+            <div class="expense-desc">
+              ${m.name} ${String(m.id) === String(adminId) ? '<span class="tag">admin</span>' : ""}
+            </div>
+            <div class="expense-meta">${m.email}</div>
+          </div>
+        </div>
+        ${
+          isAdmin && String(m.id) !== String(userId)
+            ? `
+          <button class="btn btn-danger btn-sm" onclick="removeMember('${m.id}', '${m.name}')">Remove</button>
+        `
+            : `
+          ${
+            String(m.id) === String(userId)
+              ? `
+            <button class="btn btn-secondary btn-sm" onclick="leaveGroup()">Leave</button>
+          `
+              : ""
+          }
+        `
+        }
+      </div>`,
+            )
+            .join("");
+
+          // Show add member only if admin
+          document.getElementById("addMemberSection").style.display = isAdmin
+            ? "flex"
+            : "none";
+
+          renderSplitInputs();
+        } catch (e) {}
+      }
+
+      async function removeMember(memberId, memberName) {
+        if (!confirm(`Remove ${memberName} from the group?`)) return;
+        try {
+          const res = await apiFetch(
+            `${API}/groups/${currentGroupId}/members/${memberId}`,
+            {
+              method: "DELETE",
+            },
+          );
+          const data = await res.json();
+          if (!res.ok)
+            return toast(data.detail || "Failed to remove member", "error");
+          toast(`${memberName} removed`, "success");
+          loadGroupMembers();
+        } catch (e) {
+          toast("Connection error", "error");
+        }
+      }
+
+      async function leaveGroup() {
+        if (!confirm("Are you sure you want to leave this group?")) return;
+        try {
+          const res = await apiFetch(`${API}/groups/${currentGroupId}/leave`, {
+            method: "DELETE",
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            // If admin needs to assign new admin
+            if (data.detail?.includes("admin")) {
+              const newAdminEmail = prompt(
+                "You are the admin. Enter the email of the member to assign as new admin:",
+              );
+              if (!newAdminEmail) return;
+              // Find member by email
+              const member = groupMembers.find(
+                (m) => m.email === newAdminEmail,
+              );
+              if (!member) return toast("Member not found", "error");
+              const res2 = await apiFetch(
+                `${API}/groups/${currentGroupId}/leave?new_admin_id=${member.id}`,
+                {
+                  method: "DELETE",
+                },
+              );
+              const data2 = await res2.json();
+              if (!res2.ok)
+                return toast(data2.detail || "Failed to leave", "error");
+              toast(data2.message, "success");
+              closeGroupDetail();
+              loadGroups();
+            } else {
+              return toast(data.detail || "Failed to leave group", "error");
+            }
+          } else {
+            toast(data.message || "You left the group", "success");
+            closeGroupDetail();
+            loadGroups();
+          }
+        } catch (e) {
+          toast("Connection error", "error");
+        }
+      }
+
+      async function searchAndAddMember() {
+        const email = document.getElementById("addMemberEmail").value.trim();
+        if (!email) return toast("Enter an email address", "error");
+        try {
+          const searchRes = await fetch(
+            `${API}/groups/users/search?email=${encodeURIComponent(email)}`,
+            { headers: authHeaders() },
+          );
+          const user = await searchRes.json();
+          if (!searchRes.ok)
+            return toast(user.detail || "User not found", "error");
+          const addRes = await apiFetch(
+            `${API}/groups/${currentGroupId}/members`,
+            {
+              method: "POST",
+              body: JSON.stringify({ user_id: user.id }),
+            },
+          );
+          const data = await addRes.json();
+          if (!addRes.ok)
+            return toast(data.detail || "Failed to add member", "error");
+          document.getElementById("addMemberEmail").value = "";
+          toast(`${user.name} added!`, "success");
+          loadGroupMembers();
+        } catch (e) {
+          toast("Connection error", "error");
+        }
+      }
+
+      function renderSplitInputs() {
+        const splitType = document.getElementById("gExpSplitType")?.value;
+        const container = document.getElementById("splitInputsContainer");
+        if (!container || !groupMembers.length) return;
+        if (splitType === "equal") {
+          container.innerHTML = `<div style="color:var(--text2);font-size:0.85rem">Split equally among ${groupMembers.length} members</div>`;
+          return;
+        }
+        const label =
+          splitType === "percentage" ? "Percentage (%)" : "Exact Amount (USD)";
+        container.innerHTML = `
+    <div style="font-size:0.8rem;color:var(--text2);margin-bottom:0.5rem">${label} per member:</div>
+    ${groupMembers
+      .map(
+        (m) => `
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem">
+        <span style="font-size:0.85rem;min-width:120px">${m.name}</span>
+        <input type="number" id="split_${m.id}" placeholder="${splitType === "percentage" ? "0-100" : "0.00"}" style="flex:1" min="0" step="${splitType === "percentage" ? "1" : "0.01"}">
+      </div>`,
+      )
+      .join("")}`;
+      }
+
+      async function addGroupExpense() {
+        const amount = parseFloat(document.getElementById("gExpAmount").value);
+        const currency_code = document.getElementById("gExpCurrency").value;
+        const category_id = document.getElementById("gExpCategory").value;
+        const expense_date = document.getElementById("gExpDate").value;
+        const description = document.getElementById("gExpDesc").value;
+        const split_type = document.getElementById("gExpSplitType").value;
+        if (!amount || amount <= 0)
+          return toast("Enter a valid amount", "error");
+        if (!expense_date) return toast("Select a date", "error");
+
+        // Disable button to prevent double submission
+        const btn = event.target;
+        btn.disabled = true;
+        btn.textContent = "Adding...";
+
+        let splits = [];
+        if (split_type === "equal") {
+          splits = groupMembers.map((m) => ({ user_id: m.id }));
+        } else if (split_type === "percentage") {
+          splits = groupMembers.map((m) => ({
+            user_id: m.id,
+            percentage: parseFloat(
+              document.getElementById(`split_${m.id}`)?.value || 0,
+            ),
+          }));
+          const total = splits.reduce((s, x) => s + x.percentage, 0);
+          if (Math.abs(total - 100) > 0.01)
+            return toast(`Percentages must sum to 100. Got ${total}`, "error");
+        } else {
+          splits = groupMembers.map((m) => ({
+            user_id: m.id,
+            exact_amount: parseFloat(
+              document.getElementById(`split_${m.id}`)?.value || 0,
+            ),
+          }));
+        }
+
+        try {
+          const res = await apiFetch(
+            `${API}/groups/${currentGroupId}/expenses`,
+            {
+              method: "POST",
+              body: JSON.stringify({
+                original_amount: amount,
+                currency_code,
+                category_id,
+                expense_date,
+                description,
+                split_type,
+                splits,
+              }),
+            },
+          );
+          const data = await res.json();
+          if (!res.ok) {
+            btn.disabled = false;
+            btn.textContent = "Add Group Expense";
+            return toast(data.detail || "Failed to add expense", "error");
+          }
+          toast("Group expense added!", "success");
+          document.getElementById("gExpAmount").value = "";
+          document.getElementById("gExpDesc").value = "";
+          loadGroupExpenses();
+        } catch (e) {
+          toast("Connection error", "error");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Add Group Expense";
+        }
+      }
+
+      async function loadGroupExpenses() {
+        try {
+          const res = await apiFetch(
+            `${API}/groups/${currentGroupId}/expenses`,
+          );
+          const data = await res.json();
+          const container = document.getElementById("groupExpensesList");
+          if (!data.length) {
+            container.innerHTML =
+              '<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">No expenses yet</div></div>';
+            return;
+          }
+          container.innerHTML = data
+            .map((e) => {
+              const cat = categories.find((c) => c.id === e.category_id);
+              const icon = CATEGORY_ICONS[cat?.name] || "📦";
+              return `
+        <div class="expense-item">
+          <div class="expense-left">
+            <div class="expense-icon">${icon}</div>
+            <div>
+              <div class="expense-desc">${e.description || "Group Expense"}</div>
+              <div class="expense-meta">${e.expense_date} · ${e.currency_code}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.75rem">
+            <div>
+              <div class="expense-amount">${parseFloat(e.original_amount).toFixed(2)} ${e.currency_code}</div>
+              <div class="expense-usd">$${parseFloat(e.amount_usd).toFixed(2)} USD</div>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="deleteGroupExpense('${e.id}')">✕</button>
+          </div>
+        </div>`;
+            })
+            .join("");
+        } catch (e) {}
+      }
+      async function deleteGroupExpense(expenseId) {
+        if (!confirm("Delete this group expense?")) return;
+        try {
+          const res = await apifetch(`${API}/expenses/${expenseId}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            return toast(data.detail || "Failed to delete", "error");
+          }
+          toast("Expense deleted", "success");
+          loadGroupExpenses();
+        } catch (e) {
+          toast("Connection error", "error");
+        }
+      }
+
+      // ── 2FA ──
+      async function load2FAStatus() {
+        try {
+          const res = await apiFetch(`${API}/auth/me`);
+          const me = await res.json();
+          document.getElementById("tfaStatus").textContent = me.is_2fa_enabled
+            ? "2FA is currently enabled"
+            : "2FA is currently disabled";
+          document.getElementById("tfaEnable").style.display = me.is_2fa_enabled
+            ? "none"
+            : "block";
+          document.getElementById("tfaDisable").style.display =
+            me.is_2fa_enabled ? "block" : "none";
+          document.getElementById("tfaSetup").style.display = "none";
+        } catch (e) {
+          toast("Failed to load 2FA status", "error");
+        }
+      }
+
+      async function setup2FA() {
+        try {
+          const res = await apiFetch(`${API}/auth/2fa/setup`, {
+            method: "POST",
+          });
+          const data = await res.json();
+          if (!res.ok)
+            return toast(data.detail || "Failed to setup 2FA", "error");
+          const img = document.createElement("img");
+          img.src = data.qr_code;
+          img.style.cssText = "width:200px;height:200px;border-radius:8px";
+          document.getElementById("qrCodeContainer").innerHTML = "";
+          document.getElementById("qrCodeContainer").appendChild(img);
+          document.getElementById("tfaSetup").style.display = "block";
+          document.getElementById("tfaEnable").style.display = "none";
+          toast("Scan the QR code with Google Authenticator", "success");
+        } catch (e) {
+          toast("Connection error", "error");
+        }
+      }
+
+      async function verify2FA() {
+        const code = document.getElementById("tfaCode").value;
+        if (!code || code.length !== 6)
+          return toast("Enter a valid 6-digit code", "error");
+        try {
+          const res = await apiFetch(`${API}/auth/2fa/verify`, {
+            method: "POST",
+            body: JSON.stringify({ code }),
+          });
+          const data = await res.json();
+          if (!res.ok) return toast(data.detail || "Invalid code", "error");
+          toast("2FA enabled successfully!", "success");
+          load2FAStatus();
+        } catch (e) {
+          toast("Connection error", "error");
+        }
+      }
+
+      async function disable2FA() {
+        const code = document.getElementById("tfaDisableCode").value;
+        if (!code || code.length !== 6)
+          return toast("Enter a valid 6-digit code", "error");
+        try {
+          const res = await apiFetch(`${API}/auth/2fa/disable`, {
+            method: "POST",
+            body: JSON.stringify({ code }),
+          });
+          const data = await res.json();
+          if (!res.ok) return toast(data.detail || "Invalid code", "error");
+          toast("2FA disabled", "success");
+          load2FAStatus();
+        } catch (e) {
+          toast("Connection error", "error");
+        }
+      }
+
+      // ── THEME ──
+      function toggleTheme() {
+        const current = document.documentElement.getAttribute("data-theme");
+        const next = current === "light" ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", next);
+        localStorage.setItem("theme", next);
+        document.getElementById("themeBtn").textContent =
+          next === "light" ? "☀️" : "🌙";
+      }
+
+      function initTheme() {
+        const saved = localStorage.getItem("theme") || "dark";
+        document.documentElement.setAttribute("data-theme", saved);
+        const btn = document.getElementById("themeBtn");
+        if (btn) btn.textContent = saved === "light" ? "☀️" : "🌙";
+      }
+
+      function checkPasswordStrength() {
+        const password = document.getElementById("regPassword").value;
+        const requirements = document.getElementById("passwordRequirements");
+        requirements.style.display = password.length > 0 ? "block" : "none";
+
+        const checks = {
+          "req-length": password.length >= 8,
+          "req-upper": /[A-Z]/.test(password),
+          "req-lower": /[a-z]/.test(password),
+          "req-number": /[0-9]/.test(password),
+          "req-symbol": /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+        };
+
+        for (const [id, passed] of Object.entries(checks)) {
+          const el = document.getElementById(id);
+          if (passed) {
+            el.style.color = "var(--success)";
+            el.textContent = "✓ " + el.textContent.slice(2);
+          } else {
+            el.style.color = "var(--danger)";
+            el.textContent = "✗ " + el.textContent.slice(2);
+          }
+        }
+      }
+
+      function togglePasswordVisibility(inputId, btn) {
+        const input = document.getElementById(inputId);
+        if (input.type === "password") {
+          input.type = "text";
+          btn.textContent = "🙈";
+        } else {
+          input.type = "password";
+          btn.textContent = "👁";
+        }
+      }
+
+      // ── TOAST ──
+      function toast(msg, type = "success") {
+        const t = document.createElement("div");
+        t.className = `toast ${type}`;
+        t.textContent = msg;
+        document.getElementById("toastContainer").appendChild(t);
+        setTimeout(() => t.remove(), 3500);
+      }
+    </script>
+  </body>
+</html>
