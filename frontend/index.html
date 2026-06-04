@@ -691,7 +691,7 @@
         Get Started
       </button>
     </div>
-    <div style="margin-top:4rem;display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;max-width:700px;width:100%">
+    <div style="margin-top:4rem;display:grid;grid-template-columns:repeat(4,1fr);gap:1.5rem;max-width:900px;width:100%">
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.5rem;text-align:left">
         <div style="font-size:1.5rem;margin-bottom:0.5rem">🤖</div>
         <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:0.9rem;margin-bottom:0.25rem">AI Insights</div>
@@ -707,9 +707,16 @@
         <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:0.9rem;margin-bottom:0.25rem">Group Expenses</div>
         <div style="color:var(--text2);font-size:0.8rem">Split bills equally, by percentage, or exact amounts</div>
       </div>
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.5rem;text-align:left">
+  <div style="font-size:1.5rem;margin-bottom:0.5rem">🔐</div>
+  <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:0.9rem;margin-bottom:0.25rem">2FA Security</div>
+  <div style="color:var(--text2);font-size:0.8rem">Protect your account with Google Authenticator</div>
+</div>
+
     </div>
   </div>
 </div>
+
 
       
 
@@ -1250,11 +1257,35 @@
       let categories = [];
 
       function authHeaders() {
-        return {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        };
-      }
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+}
+
+async function apiFetch(url, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    headers: { ...authHeaders(), ...(options.headers || {}) }
+  });
+  
+  if (res.status === 401) {
+    // Token expired or invalid — force logout
+    token = null;
+    userId = null;
+    userName = null;
+    localStorage.clear();
+    document.getElementById("mainApp").style.display = "none";
+    document.getElementById("authScreen").style.display = "none";
+    document.getElementById("landingPage").style.display = "block";
+    
+    // Show message after a tiny delay so landing page renders first
+    setTimeout(() => toast("Your session has expired. Please sign in again.", "error"), 100);
+    throw new Error("Unauthorized");
+  }
+  
+  return res;
+}
 
       const CATEGORY_ICONS = {
         Food: "🍕",
@@ -1383,8 +1414,6 @@ if (!allPassed) {
   return toast('Please meet all password requirements', 'error');
 }
 
-        if (pwError) return toast(pwError, "error");
-
         try {
           const res = await fetch(`${API}/auth/register`, {
             method: "POST",
@@ -1442,8 +1471,7 @@ if (!allPassed) {
   // Hide month bar on groups and settings pages
   const monthBar = document.querySelector(".month-bar");
   if (monthBar) {
-    monthBar.style.display = (name === "groups" || name === "settings") ? "none" : "flex";
-  }
+  monthBar.style.display = (name === "settings") ? "none" : "flex";  }
 
   if (name === "report") loadReport();
   if (name === "groups") {
@@ -1477,9 +1505,7 @@ if (!allPassed) {
       // ── CATEGORIES ──
       async function loadCategories() {
         try {
-          const res = await fetch(`${API}/categories`, {
-            headers: authHeaders(),
-          });
+          const res = await apiFetch(`${API}/categories`);
           if (!res.ok) return;
           const data = await res.json();
           categories = data;
@@ -1508,32 +1534,37 @@ if (!allPassed) {
       async function loadExpenses() {
         const month = getMonth();
         try {
-          const res = await fetch(`${API}/expenses?month=${month}`, {
-            headers: authHeaders(),
-          });
+          const res = await apiFetch(`${API}/expenses?month=${month}`);
           allExpenses = await res.json();
+          currentExpensePage = 1;
           renderExpenses();
         } catch (e) {}
       }
+let currentExpensePage = 1;
+const EXPENSES_PER_PAGE = 5;
 
-      function renderExpenses() {
-        const container = document.getElementById("expenseList");
-        const recent = document.getElementById("recentExpenses");
-        document.getElementById("expenseCount").textContent =
-          `${allExpenses.length} items`;
+function renderExpenses() {
+  const container = document.getElementById("expenseList");
+  const recent = document.getElementById("recentExpenses");
+  document.getElementById("expenseCount").textContent = `${allExpenses.length} items`;
 
-        if (!allExpenses.length) {
-          const empty = `<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">No expenses this month</div></div>`;
-          container.innerHTML = empty;
-          recent.innerHTML = empty;
-          return;
-        }
+  if (!allExpenses.length) {
+    const empty = `<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">No expenses this month</div></div>`;
+    container.innerHTML = empty;
+    recent.innerHTML = empty;
+    return;
+  }
 
-        const html = allExpenses
-          .map((e) => {
-            const cat = categories.find((c) => c.id === e.category_id);
-            const icon = CATEGORY_ICONS[cat?.name] || "📦";
-            return `
+  // Pagination
+  const totalPages = Math.ceil(allExpenses.length / EXPENSES_PER_PAGE);
+  const start = (currentExpensePage - 1) * EXPENSES_PER_PAGE;
+  const end = start + EXPENSES_PER_PAGE;
+  const pageExpenses = allExpenses.slice(start, end);
+
+  const html = pageExpenses.map(e => {
+    const cat = categories.find(c => c.id === e.category_id);
+    const icon = CATEGORY_ICONS[cat?.name] || "📦";
+    return `
       <div class="expense-item">
         <div class="expense-left">
           <div class="expense-icon">${icon}</div>
@@ -1550,16 +1581,23 @@ if (!allPassed) {
           <button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">✕</button>
         </div>
       </div>`;
-          })
-          .join("");
+  }).join("");
 
-        container.innerHTML = html;
-        recent.innerHTML = allExpenses
-          .slice(0, 5)
-          .map((e) => {
-            const cat = categories.find((c) => c.id === e.category_id);
-            const icon = CATEGORY_ICONS[cat?.name] || "📦";
-            return `
+  // Pagination controls
+  const pagination = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <button class="btn btn-secondary btn-sm" onclick="changeExpensePage(${currentExpensePage - 1})" ${currentExpensePage === 1 ? 'disabled style="opacity:0.4"' : ''}>← Prev</button>
+      <span style="font-size:0.85rem;color:var(--text2)">Page ${currentExpensePage} of ${totalPages} · ${allExpenses.length} total</span>
+      <button class="btn btn-secondary btn-sm" onclick="changeExpensePage(${currentExpensePage + 1})" ${currentExpensePage === totalPages ? 'disabled style="opacity:0.4"' : ''}>Next →</button>
+    </div>`;
+
+  container.innerHTML = html + (totalPages > 1 ? pagination : '');
+
+  // Recent expenses — always show latest 5
+  recent.innerHTML = allExpenses.slice(0, 5).map(e => {
+    const cat = categories.find(c => c.id === e.category_id);
+    const icon = CATEGORY_ICONS[cat?.name] || "📦";
+    return `
       <div class="expense-item">
         <div class="expense-left">
           <div class="expense-icon">${icon}</div>
@@ -1573,9 +1611,16 @@ if (!allPassed) {
           <div class="expense-usd">$${parseFloat(e.amount_usd).toFixed(2)} USD</div>
         </div>
       </div>`;
-          })
-          .join("");
-      }
+  }).join("");
+}
+
+function changeExpensePage(page) {
+  const totalPages = Math.ceil(allExpenses.length / EXPENSES_PER_PAGE);
+  if (page < 1 || page > totalPages) return;
+  currentExpensePage = page;
+  renderExpenses();
+}
+      
 
       async function addExpense() {
         const amount = parseFloat(document.getElementById("expAmount").value);
@@ -1600,9 +1645,8 @@ if (!allPassed) {
         if (payment_method) body.payment_method = payment_method;
 
         try {
-          const res = await fetch(`${API}/expenses`, {
+          const res = await apiFetch(`${API}/expenses`, {
             method: "POST",
-            headers: authHeaders(),
             body: JSON.stringify(body),
           });
           const data = await res.json();
@@ -1686,9 +1730,8 @@ if (!allPassed) {
         const [year, mon] = month.split("-").map(Number);
 
         try {
-          const res = await fetch(`${API}/budgets`, {
+          const res = await apiFetch(`${API}/budgets`, {
             method: "POST",
-            headers: authHeaders(),
             body: JSON.stringify({
               category_id,
               month: mon,
@@ -1729,9 +1772,7 @@ if (!allPassed) {
         document.getElementById("aiBadge").textContent = "⟳ loading";
 
         try {
-          const res = await fetch(`${API}/reports/monthly?month=${month}`, {
-            headers: authHeaders(),
-          });
+          const res = await apiFetch(`${API}/reports/monthly?month=${month}`);
           const data = await res.json();
 
           // AI narrative
@@ -1811,9 +1852,8 @@ if (!allPassed) {
       async function deleteExpense(expenseId) {
         if (!confirm("Delete this expense?")) return;
         try {
-          const res = await fetch(`${API}/expenses/${expenseId}`, {
-            method: "DELETE",
-            headers: authHeaders(),
+          const res = await apiFetch(`${API}/expenses/${expenseId}`, {
+            method: "DELETE"
           });
           if (!res.ok) {
             const data = await res.json();
@@ -1830,9 +1870,8 @@ if (!allPassed) {
       async function deleteBudget(budgetId) {
         if (!confirm("Delete this budget?")) return;
         try {
-          const res = await fetch(`${API}/budgets/${budgetId}`, {
-            method: "DELETE",
-            headers: authHeaders(),
+          const res = await apiFetch(`${API}/budgets/${budgetId}`, {
+            method: "DELETE"
           });
           if (!res.ok) {
             const data = await res.json();
@@ -1851,9 +1890,8 @@ if (!allPassed) {
         document.getElementById("aiNarrative").textContent =
           "Generating fresh insight...";
         try {
-          await fetch(`${API}/reports/monthly/regenerate?month=${month}`, {
+          await apiFetch(`${API}/reports/monthly/regenerate?month=${month}`, {
             method: "DELETE",
-            headers: authHeaders(),
           });
           await loadReport();
           toast("Report regenerated!", "success");
@@ -1900,9 +1938,8 @@ if (!allPassed) {
         const name = document.getElementById("groupName").value.trim();
         if (!name) return toast("Enter a group name", "error");
         try {
-          const res = await fetch(`${API}/groups`, {
+          const res = await apiFetch(`${API}/groups`, {
             method: "POST",
-            headers: authHeaders(),
             body: JSON.stringify({ name }),
           });
           const data = await res.json();
@@ -1950,15 +1987,11 @@ if (!allPassed) {
 
       async function loadGroupMembers() {
   try {
-    const res = await fetch(`${API}/groups/${currentGroupId}/members`, {
-      headers: authHeaders()
-    });
+    const res = await apiFetch(`${API}/groups/${currentGroupId}/members`);
     groupMembers = await res.json();
 
     // Get group info to know who the admin is
-    const groupRes = await fetch(`${API}/groups/${currentGroupId}`, {
-      headers: authHeaders()
-    });
+    const groupRes = await apiFetch(`${API}/groups/${currentGroupId}`);
     const groupInfo = await groupRes.json();
     const adminId = groupInfo.admin_id;
     const isAdmin = String(adminId) === String(userId);
@@ -1994,9 +2027,8 @@ if (!allPassed) {
 async function removeMember(memberId, memberName) {
   if (!confirm(`Remove ${memberName} from the group?`)) return;
   try {
-    const res = await fetch(`${API}/groups/${currentGroupId}/members/${memberId}`, {
-      method: 'DELETE',
-      headers: authHeaders()
+    const res = await apiFetch(`${API}/groups/${currentGroupId}/members/${memberId}`, {
+      method: 'DELETE'
     });
     const data = await res.json();
     if (!res.ok) return toast(data.detail || 'Failed to remove member', 'error');
@@ -2008,10 +2040,8 @@ async function removeMember(memberId, memberName) {
 async function leaveGroup() {
   if (!confirm('Are you sure you want to leave this group?')) return;
   try {
-    const res = await fetch(`${API}/groups/${currentGroupId}/leave`, {
-      method: 'DELETE',
-      headers: authHeaders()
-    });
+    const res = await apiFetch(`${API}/groups/${currentGroupId}/leave`, {
+      method: 'DELETE'});
     const data = await res.json();
     if (!res.ok) {
       // If admin needs to assign new admin
@@ -2021,9 +2051,8 @@ async function leaveGroup() {
         // Find member by email
         const member = groupMembers.find(m => m.email === newAdminEmail);
         if (!member) return toast('Member not found', 'error');
-        const res2 = await fetch(`${API}/groups/${currentGroupId}/leave?new_admin_id=${member.id}`, {
-          method: 'DELETE',
-          headers: authHeaders()
+        const res2 = await apiFetch(`${API}/groups/${currentGroupId}/leave?new_admin_id=${member.id}`, {
+          method: 'DELETE'
         });
         const data2 = await res2.json();
         if (!res2.ok) return toast(data2.detail || 'Failed to leave', 'error');
@@ -2053,11 +2082,10 @@ async function leaveGroup() {
           const user = await searchRes.json();
           if (!searchRes.ok)
             return toast(user.detail || "User not found", "error");
-          const addRes = await fetch(
+          const addRes = await apiFetch(
             `${API}/groups/${currentGroupId}/members`,
             {
               method: "POST",
-              headers: authHeaders(),
               body: JSON.stringify({ user_id: user.id }),
             },
           );
@@ -2134,9 +2162,8 @@ async function leaveGroup() {
         }
 
         try {
-          const res = await fetch(`${API}/groups/${currentGroupId}/expenses`, {
+          const res = await apiFetch(`${API}/groups/${currentGroupId}/expenses`, {
             method: "POST",
-            headers: authHeaders(),
             body: JSON.stringify({
               original_amount: amount,
               currency_code,
@@ -2167,9 +2194,7 @@ async function leaveGroup() {
 
       async function loadGroupExpenses() {
         try {
-          const res = await fetch(`${API}/groups/${currentGroupId}/expenses`, {
-            headers: authHeaders(),
-          });
+          const res = await apiFetch(`${API}/groups/${currentGroupId}/expenses`);
           const data = await res.json();
           const container = document.getElementById("groupExpensesList");
           if (!data.length) {
@@ -2205,9 +2230,8 @@ async function leaveGroup() {
       async function deleteGroupExpense(expenseId) {
         if (!confirm("Delete this group expense?")) return;
         try {
-          const res = await fetch(`${API}/expenses/${expenseId}`, {
-            method: "DELETE",
-            headers: authHeaders(),
+          const res = await apifetch(`${API}/expenses/${expenseId}`, {
+            method: "DELETE"
           });
           if (!res.ok) {
             const data = await res.json();
@@ -2223,7 +2247,7 @@ async function leaveGroup() {
       // ── 2FA ──
       async function load2FAStatus() {
         try {
-          const res = await fetch(`${API}/auth/me`, { headers: authHeaders() });
+          const res = await apiFetch(`${API}/auth/me`);
           const me = await res.json();
           document.getElementById("tfaStatus").textContent = me.is_2fa_enabled
             ? "2FA is currently enabled"
@@ -2241,9 +2265,8 @@ async function leaveGroup() {
 
       async function setup2FA() {
         try {
-          const res = await fetch(`${API}/auth/2fa/setup`, {
-            method: "POST",
-            headers: authHeaders(),
+          const res = await apiFetch(`${API}/auth/2fa/setup`, {
+            method: "POST"
           });
           const data = await res.json();
           if (!res.ok)
@@ -2266,9 +2289,8 @@ async function leaveGroup() {
         if (!code || code.length !== 6)
           return toast("Enter a valid 6-digit code", "error");
         try {
-          const res = await fetch(`${API}/auth/2fa/verify`, {
+          const res = await apiFetch(`${API}/auth/2fa/verify`, {
             method: "POST",
-            headers: authHeaders(),
             body: JSON.stringify({ code }),
           });
           const data = await res.json();
@@ -2285,9 +2307,8 @@ async function leaveGroup() {
         if (!code || code.length !== 6)
           return toast("Enter a valid 6-digit code", "error");
         try {
-          const res = await fetch(`${API}/auth/2fa/disable`, {
+          const res = await apiFetch(`${API}/auth/2fa/disable`, {
             method: "POST",
-            headers: authHeaders(),
             body: JSON.stringify({ code }),
           });
           const data = await res.json();
