@@ -167,18 +167,7 @@ expense-tracker/
 
 ---
 
-## 🔄 Development Phases
-
-| Phase | Description |
-|---|---|
-| Phase 1 | ERD design, API contract, DECISIONS.md |
-| Phase 2 | Core API, database, Redis, frontend |
-| Phase 3 | JWT auth, 2FA, validation, rate limiting |
-| Phase 4 | Docker, GitHub Actions CI, Render deployment |
-
----
-
 ## 👤 Author
 
 **Aleya Kewseedin**  
-GitHub: [@aleyakewseedin-web](https://github.com/aleyakewseedin-web)
+linkedin:https://www.linkedin.com/in/aleya-kewseedin-92349a3b1/
