@@ -2808,6 +2808,24 @@ async function removeReceipt(expenseId) {
   }
 }
 
+async function downloadCSV() {
+  const month = getMonth();
+  const url = `${API}/expenses/export?month=${month}`;
+  try {
+    const res = await fetch(url, { headers: authHeaders() });
+    if (!res.ok) return toast('Export failed', 'error');
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = `expenses-${month}.csv`;
+    a.click();
+    URL.revokeObjectURL(blobUrl);
+  } catch(e) {
+    toast('Connection error', 'error');
+  }
+}
+
       // ── TOAST ──
       function toast(msg, type = "success") {
         const t = document.createElement("div");

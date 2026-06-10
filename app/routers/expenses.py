@@ -16,6 +16,9 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from fastapi import File, UploadFile
 from app.services.upload import upload_receipt
+from fastapi.responses import StreamingResponse
+import io
+import csv
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -68,7 +71,46 @@ async def create_expense(
 
     return expense
 
-   
+@router.get("/export")
+def export_expenses(
+    month: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    query = db.query(Expense).filter(Expense.user_id == current_user.id)
+    if month:
+        parts = month.split("-")
+        try:
+            year, mon = int(parts[0]), int(parts[1])
+        except:
+            raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM")
+        query = query.filter(
+            extract("year", Expense.expense_date) == year,
+            extract("month", Expense.expense_date) == mon
+        )
+    expenses = query.order_by(Expense.expense_date.desc()).all()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Date", "Description", "Category", "Original Amount", "Currency", "Amount (USD)", "Exchange Rate", "Payment Method"])
+    for e in expenses:
+        category = db.query(Category).filter(Category.id == e.category_id).first()
+        writer.writerow([
+            e.expense_date.strftime("%Y-%m-%d"),
+            e.description or "",
+            category.name if category else "Unknown",
+            float(e.original_amount),
+            e.currency_code,
+            float(e.amount_usd),
+            float(e.exchange_rate),
+            e.payment_method or ""
+        ])
+    output.seek(0)
+    filename = f"expenses-{month}.csv" if month else "expenses.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 @router.get("", response_model=List[ExpenseResponse])
 def get_expenses(
@@ -106,6 +148,7 @@ def get_expenses(
         query = query.filter(Expense.group_id == group_id)
 
     return query.order_by(Expense.expense_date.desc()).all()
+
 
 
 @router.get("/{expense_id}", response_model=ExpenseResponse)
