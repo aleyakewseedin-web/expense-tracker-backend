@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status,Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request 
 from sqlalchemy.orm import Session
 from sqlalchemy import extract
 from app.database import get_db
@@ -14,6 +14,8 @@ from uuid import UUID
 from datetime import date
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from fastapi import File, UploadFile
+from app.services.upload import upload_receipt
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -66,6 +68,7 @@ async def create_expense(
 
     return expense
 
+   
 
 @router.get("", response_model=List[ExpenseResponse])
 def get_expenses(
@@ -137,9 +140,7 @@ async def update_expense(
         raise HTTPException(status_code=404, detail="Expense not found")
 
     if updates.category_id:
-        category = db.query(Category).filter(
-            Category.id == updates.category_id
-        ).first()
+        category = db.query(Category).filter(Category.id == updates.category_id).first()
         if not category:
             raise HTTPException(status_code=404, detail="Category not found")
         expense.category_id = updates.category_id
@@ -147,11 +148,7 @@ async def update_expense(
     if updates.original_amount or updates.currency_code:
         new_amount = updates.original_amount or expense.original_amount
         new_currency = updates.currency_code or expense.currency_code
-        rate = await get_exchange_rate(
-            base_currency=new_currency,
-            target_currency="USD",
-            db=db
-        )
+        rate = await get_exchange_rate(base_currency=new_currency, target_currency="USD", db=db)
         expense.exchange_rate = rate
         expense.amount_usd = round(float(new_amount) * rate, 2)
 
@@ -192,7 +189,6 @@ def delete_expense(
 
     month_str = expense.expense_date.strftime("%Y-%m")
 
-    # Delete splits first before deleting expense
     from app.models.expense import ExpenseSplit
     db.query(ExpenseSplit).filter(
         ExpenseSplit.expense_id == expense_id
@@ -202,3 +198,5 @@ def delete_expense(
     db.commit()
     invalidate_report_cache(str(current_user.id), month_str)
     return {"message": "Expense deleted"}
+
+

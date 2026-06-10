@@ -64,7 +64,7 @@ class ExpenseResponse(BaseModel):
     expense_date: date
     description: Optional[str] = None
     payment_method: Optional[str] = None
-
+    receipt_reference: Optional[str] = None
     class Config:
         from_attributes = True
 

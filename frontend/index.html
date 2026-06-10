@@ -1225,8 +1225,11 @@
             <div class="section">
               <div class="section-header">
                 <div class="section-title">All Expenses</div>
+                <div style="display:flex;gap:0.5rem;align-items:center">
                 <span id="expenseCount" class="tag">0 items</span>
+                <button class="btn btn-secondary btn-sm" onclick="downloadCSV()">⬇ Export CSV</button>
               </div>
+            </div>
               <div id="expenseList">
                 <div class="empty">
                   <div class="empty-icon">💸</div>
@@ -1571,7 +1574,7 @@
     <div class="toast-container" id="toastContainer"></div>
 
     <script>
-      const API = "https://expense-tracker-backend-zskj.onrender.com";
+      const API = "http://localhost:8000";
       let token = localStorage.getItem("token");
       let userId = localStorage.getItem("userId");
       let userName = localStorage.getItem("userName");
@@ -1933,6 +1936,14 @@
             <div class="expense-usd">$${parseFloat(e.amount_usd).toFixed(2)} USD</div>
           </div>
           <button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">✕</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0">
+            📎
+            <input type="file" accept="image/*" style="display:none" onchange="uploadReceipt('${e.id}', this)">
+          </label>
+          ${e.receipt_reference ? `
+            <a href="${e.receipt_reference}" target="_blank" class="btn btn-secondary btn-sm">👁</a>
+            <button class="btn btn-danger btn-sm" onclick="removeReceipt('${e.id}')">🗑</button>
+          ` : ''}
         </div>
       </div>`;
           })
@@ -2763,6 +2774,39 @@
           btn.textContent = "👁";
         }
       }
+       
+      async function uploadReceipt(expenseId, input) {
+        const file = input.files[0];
+        if (!file) return;
+       const formData = new FormData();
+      formData.append('file', file);
+      try {
+           const res = await fetch(`${API}/receipts/${expenseId}`, {
+           method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+    });
+        const data = await res.json();
+        if (!res.ok) return toast(data.detail || 'Upload failed', 'error');
+        toast('Receipt uploaded!', 'success');
+        loadAll();
+  } catch(e) {
+    toast('Connection error', 'error');
+  }
+}
+
+async function removeReceipt(expenseId) {
+  const res = await fetch(`${API}/receipts/${expenseId}`, {
+    method: 'DELETE',
+    headers: authHeaders()
+  });
+  if (res.ok) {
+    toast('Receipt removed', 'success');
+    loadAll();
+  } else {
+    toast('Failed to remove receipt', 'error');
+  }
+}
 
       // ── TOAST ──
       function toast(msg, type = "success") {

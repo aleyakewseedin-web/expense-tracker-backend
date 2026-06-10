@@ -150,3 +150,27 @@ def test_get_report_invalid_month():
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 400
+
+def test_export_requires_auth():
+    response = client.get("/expenses/export?format=csv&month=2026-05")
+    assert response.status_code == 403
+
+def test_export_returns_csv():
+    # Register and login
+    client.post("/auth/register", json={
+        "name": "Export Test",
+        "email": "exporttest@test.com",
+        "password": "Test@1234!",
+        "base_currency": "USD"
+    })
+    login_res = client.post("/auth/login", json={
+        "email": "exporttest@test.com",
+        "password": "Test@1234!"
+    })
+    token = login_res.json().get("access_token")
+    response = client.get(
+        "/expenses/export?format=csv&month=2026-05",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+    assert "text/csv" in response.headers["content-type"]
