@@ -17,6 +17,7 @@ from slowapi.util import get_remote_address
 from fastapi import File, UploadFile
 from app.services.upload import upload_receipt
 from fastapi.responses import StreamingResponse
+from app.services.cache import get_redis_client
 import io
 import csv
 
@@ -68,6 +69,12 @@ async def create_expense(
 
     month_str = expense.expense_date.strftime("%Y-%m")
     invalidate_report_cache(str(current_user.id), month_str)
+     
+     # Invalidate trend cache
+    redis = get_redis_client()
+    if redis:
+        for key in redis.scan_iter(f"trend:{current_user.id}:*"):
+            redis.delete(key)
 
     return expense
 
@@ -240,6 +247,14 @@ def delete_expense(
     db.delete(expense)
     db.commit()
     invalidate_report_cache(str(current_user.id), month_str)
+    
+     # Invalidate trend cache
+    redis = get_redis_client()
+    if redis:
+        for key in redis.scan_iter(f"trend:{current_user.id}:*"):
+            redis.delete(key)
+
     return {"message": "Expense deleted"}
+
 
 

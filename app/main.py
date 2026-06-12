@@ -6,7 +6,7 @@ from slowapi.errors import RateLimitExceeded
 from app.database import  engine, Base, SessionLocal
 from app.models import *
 from app.core.seed import seed_categories
-from app.routers import auth, categories, expenses, budgets, groups, reports, twofa, receipts
+from app.routers import auth, categories, expenses, budgets, groups, reports, twofa, receipts,analytics
 Base.metadata.create_all(bind=engine)
 
 # Seed system categories on startup
@@ -42,6 +42,7 @@ app.include_router(groups.router)
 app.include_router(reports.router)
 app.include_router(twofa.router)
 app.include_router(receipts.router)
+app.include_router(analytics.router)
 
 # Debug routes
 for route in app.routes:

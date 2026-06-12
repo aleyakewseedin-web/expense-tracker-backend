@@ -41,3 +41,8 @@ def invalidate_report_cache(user_id: str, month: str):
         redis_client.delete(key)
     except:
         pass
+
+def get_redis_client():
+    if not REDIS_AVAILABLE:
+        return None
+    return redis_client

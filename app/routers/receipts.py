@@ -7,9 +7,9 @@ from app.dependencies import get_current_user
 from app.services.upload import upload_receipt
 from uuid import UUID
 
-router = APIRouter(prefix="/receipts", tags=["Receipts"])
+router = APIRouter(prefix="/expenses", tags=["Receipts"])
 
-@router.post("/{expense_id}")
+@router.post("/{expense_id}/receipt")
 async def upload_expense_receipt(
     expense_id: UUID,
     file: UploadFile = File(...),
@@ -36,7 +36,7 @@ async def upload_expense_receipt(
 
     return {"message": "Receipt uploaded successfully", "receipt_url": url}
 
-@router.delete("/{expense_id}")
+@router.delete("/{expense_id}/receipt")
 def remove_receipt(
     expense_id: UUID,
     db: Session = Depends(get_db),

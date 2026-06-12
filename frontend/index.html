@@ -672,6 +672,8 @@
       ::-webkit-scrollbar-track { background: var(--bg); }
       ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
   </head>
   <body>
     <div class="app">
@@ -1108,7 +1110,19 @@
                 <div class="stat-sub">categories</div>
               </div>
             </div>
-
+              
+          <div class="section" id="trendSection">
+             <div class="section-header">
+              <div class="section-title">Spending Trend</div>
+               <select id="trendMonths" onchange="loadTrend()" class="input" style="width:auto;padding:0.3rem 0.6rem">
+                 <option value="3">3 months</option>
+                 <option value="6" selected>6 months</option>
+                 <option value="12">12 months</option>
+               </select>
+             </div>
+            <canvas id="trendChart" height="120"></canvas>
+          </div>
+             
             <div class="section">
               <div class="section-header">
                 <div class="section-title">Recent Expenses</div>
@@ -1588,8 +1602,8 @@
       }
 
       async function apiFetch(url, options = {}) {
-        const res = await fetch(url, {
-          ...options,
+         const res = await fetch(`${API}${url}`, {          
+         ...options,
           headers: { ...authHeaders(), ...(options.headers || {}) },
         });
 
@@ -1855,6 +1869,7 @@
       async function loadAll() {
         await Promise.all([loadExpenses(), loadBudgets()]);
         updateDashboard();
+        loadTrend();
       }
 
       // ── CATEGORIES ──
@@ -2775,28 +2790,29 @@
         }
       }
        
-      async function uploadReceipt(expenseId, input) {
-        const file = input.files[0];
-        if (!file) return;
-       const formData = new FormData();
-      formData.append('file', file);
-      try {
-           const res = await fetch(`${API}/receipts/${expenseId}`, {
-           method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-          body: formData
+async function uploadReceipt(expenseId, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res = await fetch(`${API}/expenses/${expenseId}/receipt`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
     });
-        const data = await res.json();
-        if (!res.ok) return toast(data.detail || 'Upload failed', 'error');
-        toast('Receipt uploaded!', 'success');
-        loadAll();
+    const data = await res.json();
+    if (!res.ok) return toast(data.detail || 'Upload failed', 'error');
+    toast('Receipt uploaded!', 'success');
+    loadAll();
   } catch(e) {
     toast('Connection error', 'error');
   }
-}
+}      
+        
 
 async function removeReceipt(expenseId) {
-  const res = await fetch(`${API}/receipts/${expenseId}`, {
+  const res = await fetch(`${API}/expenses/${expenseId}/receipt`, {
     method: 'DELETE',
     headers: authHeaders()
   });
@@ -2826,6 +2842,58 @@ async function downloadCSV() {
   }
 }
 
+
+let trendChartInstance = null;
+
+async function loadTrend() {
+  const months = document.getElementById('trendMonths').value;
+  const res = await apiFetch(`/analytics/trend?months=${months}`);
+  if (!res) return;
+  const data = await res.json();
+  if (!res.ok) return;
+
+  const labels = data.months.map(m => m.month);
+  const values = data.months.map(m => m.total_usd);
+
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  
+  if (trendChartInstance) trendChartInstance.destroy();
+  
+  trendChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Total Spent (USD)',
+        data: values,
+        borderColor: '#7c6dfa',
+        backgroundColor: 'rgba(124, 109, 250, 0.1)',
+        borderWidth: 2,
+        pointBackgroundColor: '#7c6dfa',
+        pointRadius: 5,
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `$${ctx.parsed.y.toFixed(2)} USD`
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { callback: val => `$${val}` }
+        }
+      }
+    }
+  });
+}
       // ── TOAST ──
       function toast(msg, type = "success") {
         const t = document.createElement("div");
