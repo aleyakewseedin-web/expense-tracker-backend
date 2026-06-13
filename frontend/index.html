@@ -1875,7 +1875,7 @@
       // ── CATEGORIES ──
       async function loadCategories() {
         try {
-          const res = await apiFetch(`${API}/categories`);
+          const res = await apiFetch('/categories');
           if (!res.ok) return;
           const data = await res.json();
           categories = data;
@@ -1904,7 +1904,7 @@
       async function loadExpenses() {
         const month = getMonth();
         try {
-          const res = await apiFetch(`${API}/expenses?month=${month}`);
+          const res = await apiFetch(`/expenses?month=${month}`);
           allExpenses = await res.json();
           currentExpensePage = 1;
           renderExpenses();
@@ -2028,7 +2028,7 @@
         if (payment_method) body.payment_method = payment_method;
 
         try {
-          const res = await apiFetch(`${API}/expenses`, {
+          const res = await apiFetch(`/expenses`, {
             method: "POST",
             body: JSON.stringify(body),
           });
@@ -2113,7 +2113,7 @@
         const [year, mon] = month.split("-").map(Number);
 
         try {
-          const res = await apiFetch(`${API}/budgets`, {
+          const res = await apiFetch(`/budgets`, {
             method: "POST",
             body: JSON.stringify({
               category_id,
@@ -2155,7 +2155,7 @@
         document.getElementById("aiBadge").textContent = "⟳ loading";
 
         try {
-          const res = await apiFetch(`${API}/reports/monthly?month=${month}`);
+          const res = await apiFetch(`/reports/monthly?month=${month}`);
           const data = await res.json();
 
           // AI narrative
@@ -2235,7 +2235,7 @@
       async function deleteExpense(expenseId) {
         if (!confirm("Delete this expense?")) return;
         try {
-          const res = await apiFetch(`${API}/expenses/${expenseId}`, {
+          const res = await apiFetch(`/expenses/${expenseId}`, {
             method: "DELETE",
           });
           if (!res.ok) {
@@ -2253,7 +2253,7 @@
       async function deleteBudget(budgetId) {
         if (!confirm("Delete this budget?")) return;
         try {
-          const res = await apiFetch(`${API}/budgets/${budgetId}`, {
+          const res = await apiFetch(`/budgets/${budgetId}`, {
             method: "DELETE",
           });
           if (!res.ok) {
@@ -2273,7 +2273,7 @@
         document.getElementById("aiNarrative").textContent =
           "Generating fresh insight...";
         try {
-          await apiFetch(`${API}/reports/monthly/regenerate?month=${month}`, {
+          await apiFetch(`/reports/monthly/regenerate?month=${month}`, {
             method: "DELETE",
           });
           await loadReport();
@@ -2321,7 +2321,7 @@
         const name = document.getElementById("groupName").value.trim();
         if (!name) return toast("Enter a group name", "error");
         try {
-          const res = await apiFetch(`${API}/groups`, {
+          const res = await apiFetch(`/groups`, {
             method: "POST",
             body: JSON.stringify({ name }),
           });
@@ -2370,11 +2370,11 @@
 
       async function loadGroupMembers() {
         try {
-          const res = await apiFetch(`${API}/groups/${currentGroupId}/members`);
+          const res = await apiFetch(`/groups/${currentGroupId}/members`);
           groupMembers = await res.json();
 
           // Get group info to know who the admin is
-          const groupRes = await apiFetch(`${API}/groups/${currentGroupId}`);
+          const groupRes = await apiFetch(`/groups/${currentGroupId}`);
           const groupInfo = await groupRes.json();
           const adminId = groupInfo.admin_id;
           const isAdmin = String(adminId) === String(userId);
@@ -2424,7 +2424,7 @@
         if (!confirm(`Remove ${memberName} from the group?`)) return;
         try {
           const res = await apiFetch(
-            `${API}/groups/${currentGroupId}/members/${memberId}`,
+            `/groups/${currentGroupId}/members/${memberId}`,
             {
               method: "DELETE",
             },
@@ -2442,7 +2442,7 @@
       async function leaveGroup() {
         if (!confirm("Are you sure you want to leave this group?")) return;
         try {
-          const res = await apiFetch(`${API}/groups/${currentGroupId}/leave`, {
+          const res = await apiFetch(`/groups/${currentGroupId}/leave`, {
             method: "DELETE",
           });
           const data = await res.json();
@@ -2459,7 +2459,7 @@
               );
               if (!member) return toast("Member not found", "error");
               const res2 = await apiFetch(
-                `${API}/groups/${currentGroupId}/leave?new_admin_id=${member.id}`,
+                `/groups/${currentGroupId}/leave?new_admin_id=${member.id}`,
                 {
                   method: "DELETE",
                 },
@@ -2495,7 +2495,7 @@
           if (!searchRes.ok)
             return toast(user.detail || "User not found", "error");
           const addRes = await apiFetch(
-            `${API}/groups/${currentGroupId}/members`,
+            `/groups/${currentGroupId}/members`,
             {
               method: "POST",
               body: JSON.stringify({ user_id: user.id }),
@@ -2575,7 +2575,7 @@
 
         try {
           const res = await apiFetch(
-            `${API}/groups/${currentGroupId}/expenses`,
+            `/groups/${currentGroupId}/expenses`,
             {
               method: "POST",
               body: JSON.stringify({
@@ -2610,7 +2610,7 @@
       async function loadGroupExpenses() {
         try {
           const res = await apiFetch(
-            `${API}/groups/${currentGroupId}/expenses`,
+            `/groups/${currentGroupId}/expenses`,
           );
           const data = await res.json();
           const container = document.getElementById("groupExpensesList");
@@ -2647,7 +2647,7 @@
       async function deleteGroupExpense(expenseId) {
         if (!confirm("Delete this group expense?")) return;
         try {
-          const res = await apifetch(`${API}/expenses/${expenseId}`, {
+          const res = await apifetch(`/expenses/${expenseId}`, {
             method: "DELETE",
           });
           if (!res.ok) {
@@ -2664,7 +2664,7 @@
       // ── 2FA ──
       async function load2FAStatus() {
         try {
-          const res = await apiFetch(`${API}/auth/me`);
+          const res = await apiFetch(`/auth/me`);
           const me = await res.json();
           document.getElementById("tfaStatus").textContent = me.is_2fa_enabled
             ? "2FA is currently enabled"
@@ -2682,7 +2682,7 @@
 
       async function setup2FA() {
         try {
-          const res = await apiFetch(`${API}/auth/2fa/setup`, {
+          const res = await apiFetch(`/auth/2fa/setup`, {
             method: "POST",
           });
           const data = await res.json();
@@ -2706,7 +2706,7 @@
         if (!code || code.length !== 6)
           return toast("Enter a valid 6-digit code", "error");
         try {
-          const res = await apiFetch(`${API}/auth/2fa/verify`, {
+          const res = await apiFetch(`/auth/2fa/verify`, {
             method: "POST",
             body: JSON.stringify({ code }),
           });
@@ -2724,7 +2724,7 @@
         if (!code || code.length !== 6)
           return toast("Enter a valid 6-digit code", "error");
         try {
-          const res = await apiFetch(`${API}/auth/2fa/disable`, {
+          const res = await apiFetch(`/auth/2fa/disable`, {
             method: "POST",
             body: JSON.stringify({ code }),
           });
