@@ -1,6 +1,6 @@
 # 💸 Expense Tracker — Multi-Currency Personal & Group Expense Manager
 
-A full-stack expense tracking application built with FastAPI, PostgreSQL, and Redis. Features AI-powered monthly financial insights, multi-currency support, group expense splitting, and JWT authentication with 2FA.
+A full-stack expense tracking application built with FastAPI, PostgreSQL, and Redis. Features AI-powered monthly financial insights, multi-currency support, group expense splitting, JWT authentication with 2FA, CSV export, receipt image upload, and spending trend analytics.
 
 ---
 
@@ -26,13 +26,16 @@ A full-stack expense tracking application built with FastAPI, PostgreSQL, and Re
 ## ✨ Features
 
 - **Expense Logging** — Log expenses in any currency, automatically converted to USD at the daily exchange rate
+- **CSV Export** — Download monthly expenses as a CSV file via `GET /expenses/export?month=YYYY-MM`
+- **Receipt Upload** — Attach images to expenses via Cloudinary (`POST /expenses/{id}/receipt`), view and remove receipts
+- **Spending Trend** — Time series of last N months of spending with month-over-month change percentage (`GET /analytics/trend?months=6`), cached in Redis
 - **Budget Tracking** — Set monthly per-category budgets with visual progress bars and over-budget alerts
 - **AI Monthly Report** — Llama 3 (via Groq) generates natural language financial insights, cached in Redis
 - **Group Expenses** — Create groups, add members, split bills equally, by percentage, or exact amounts
 - **Multi-Currency** — 31 supported currencies via Frankfurter API, rates frozen at ingestion time
 - **JWT Authentication** — Secure token-based auth with automatic session expiry
 - **2FA Security** — TOTP-based two-factor authentication via Google Authenticator
-- **Dark & Light Mode** — Toggle between themes, preference saved in localStorage
+- **Dark & Light Mode** — Toggle between themes
 - **Pagination** — Expenses paginated 5 per page
 
 ---
@@ -43,9 +46,10 @@ A full-stack expense tracking application built with FastAPI, PostgreSQL, and Re
 |---|---|---|
 | Backend | FastAPI (Python) | Async, auto-generates /docs, Pydantic validation |
 | Database | PostgreSQL | NUMERIC(12,2) precision, strong FK constraints |
-| Cache | Redis | Sub-millisecond response for AI report cache |
+| Cache | Redis | Sub-millisecond response for AI report and trend cache |
 | AI | Groq / Llama 3 | Free, fast AI inference for financial insights |
 | Currency | Frankfurter API | Free exchange rates, no API key required |
+| Storage | Cloudinary | Free cloud image storage for receipt uploads |
 | Auth | JWT + bcrypt | Stateless authentication, secure password hashing |
 | 2FA | pyotp (TOTP) | Google Authenticator compatible |
 | Containerization | Docker + Docker Compose | One command runs full stack |
@@ -67,7 +71,6 @@ All primary keys use UUID. Financial values use `NUMERIC(12,2)` for precision.
 ### Prerequisites
 - Python 3.11+
 - Docker Desktop
-- PostgreSQL (or use Docker)
 
 ### 1. Clone the repository
 ```bash
@@ -84,6 +87,9 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 GROQ_API_KEY=your-groq-api-key
 POSTGRES_PASSWORD=yourpassword
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
 ```
 
 ### 3. Run with Docker Compose
@@ -132,13 +138,24 @@ Exchange rates are fetched from Frankfurter API once per currency pair per day a
 
 ---
 
+## 📊 New Endpoints
+
+| Endpoint | Description |
+|---|---|
+| `GET /expenses/export?month=YYYY-MM` | Download expenses as CSV |
+| `POST /expenses/{id}/receipt` | Upload receipt image to Cloudinary |
+| `DELETE /expenses/{id}/receipt` | Remove receipt image |
+| `GET /analytics/trend?months=N` | Spending trend time series (cached in Redis) |
+
+---
+
 ## 🔐 Security
 
 - All endpoints protected with JWT Bearer tokens
 - Passwords hashed with bcrypt
 - Optional TOTP-based 2FA (Google Authenticator)
 - Rate limiting on all write endpoints (slowapi)
-- Pydantic validation: positive amounts, valid ISO 4217 currencies, no future dates, split percentages sum to 100
+- Pydantic validation: positive amounts, valid ISO 4217 currencies, no future dates
 - Group-level authorization: members can only access their own groups
 
 ---
@@ -151,8 +168,11 @@ expense-tracker/
 │   ├── core/          # config, security, seed
 │   ├── models/        # SQLAlchemy models
 │   ├── routers/       # FastAPI route handlers
+│   │   ├── analytics.py   # Spending trend endpoint
+│   │   ├── receipts.py    # Receipt upload/remove
+│   │   └── ...
 │   ├── schemas/       # Pydantic schemas
-│   ├── services/      # currency, cache, AI report
+│   ├── services/      # currency, cache, AI report, upload
 │   ├── database.py
 │   ├── dependencies.py
 │   └── main.py
@@ -167,7 +187,19 @@ expense-tracker/
 
 ---
 
+## 🔄 Development Phases
+
+| Phase | Description |
+|---|---|
+| Phase 1 | ERD design, API contract, DECISIONS.md |
+| Phase 2 | Core API, database, Redis, frontend |
+| Phase 3 | JWT auth, 2FA, validation, rate limiting |
+| Phase 4 | Docker, GitHub Actions CI, Render deployment |
+| Extensions | CSV export, receipt upload, spending trend analytics |
+
+---
+
 ## 👤 Author
 
 **Aleya Kewseedin**  
-linkedin:https://www.linkedin.com/in/aleya-kewseedin-92349a3b1/
+GitHub: [@aleyakewseedin-web](https://github.com/aleyakewseedin-web)
